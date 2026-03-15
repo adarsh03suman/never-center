@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Never Center v5.0 - Master Build</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --cyan: #06b6d4; --pink: #ec4899; --purple: #8b5cf6;
+            --bg: #09030f; --glass: rgba(15, 10, 20, 0.55);
+            --glass-border: rgba(236, 72, 153, 0.2);
+        }
+        body { background-color: var(--bg); color: #fff; font-family: 'Rajdhani', sans-serif; margin: 0; overflow: hidden; background-image: linear-gradient(rgba(6, 182, 212, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(6, 182, 212, 0.03) 1px, transparent 1px); background-size: 30px 30px; }
+        .fixed-bg { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; pointer-events: none; display: flex; justify-content: center; align-items: center; }
+        .ambient-orb { position: absolute; border-radius: 50%; filter: blur(90px); animation: float 20s infinite alternate ease-in-out; opacity: 0.6; }
+        .orb-1 { width: 45vw; height: 45vw; background: rgba(236, 72, 153, 0.2); top: -10%; left: -10%; }
+        .orb-2 { width: 55vw; height: 55vw; background: rgba(6, 182, 212, 0.2); bottom: -20%; right: -10%; }
+        @keyframes float { 0% { transform: translate(0, 0); } 100% { transform: translate(5vw, 5vh); } }
+        .visualizer-ring { position: absolute; width: 85vh; height: 85vh; border: 2px solid rgba(236, 72, 153, 0.3); border-radius: 50%; box-shadow: 0 0 40px rgba(6, 182, 212, 0.1); transition: transform 0.1s; animation: breathe 4s infinite alternate; }
+        @keyframes breathe { 0% { transform: scale(1); } 100% { transform: scale(1.03); } }
+        .dashboard-track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; height: 100vh; width: 100vw; scroll-behavior: smooth; z-index: 10; position: relative; }
+        .dashboard-track::-webkit-scrollbar { display: none; }
+        .screen { min-width: 100vw; height: 100vh; scroll-snap-align: center; scroll-snap-stop: always; display: flex; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; }
+        .glass-panel { background: var(--glass); padding: 1.5rem; border-radius: 20px; border: 1px solid var(--glass-border); backdrop-filter: blur(14px); width: 95vw; max-width: 900px; height: 85vh; max-height: 450px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); display: flex; flex-direction: column; align-items: center; justify-content: space-between; }
+        h1.time { font-size: 4.5rem; margin: 0; text-shadow: 0 0 20px rgba(236, 72, 153, 0.5); font-weight: 600; line-height: 1; }
+        .vitals-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%; max-width: 500px; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); }
+        .data-row { display: flex; justify-content: space-between; font-size: 1rem; border-bottom: 1px dashed rgba(255,255,255,0.05); padding-bottom: 5px; }
+        button { background: rgba(236, 72, 153, 0.1); color: #fff; border: 1px solid var(--pink); padding: 12px 20px; font-family: 'Rajdhani', sans-serif; font-weight: 700; border-radius: 8px; cursor: pointer; text-transform: uppercase; width: 100%; max-width: 300px; transition: 0.3s; }
+        button:hover { background: var(--pink); box-shadow: 0 0 20px var(--pink); }
+        .app-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; width: 100%; height: 100%; padding: 10px 0; }
+        .app-tile { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; transition: 0.2s; }
+        .app-tile:hover { background: rgba(236, 72, 153, 0.2); border-color: var(--pink); transform: translateY(-3px); }
+        .device-item { display: flex; justify-content: space-between; width: 100%; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .kick-btn { background: transparent; border: 1px solid #ef4444; color: #ef4444; width: 60px; padding: 4px; font-size: 0.7rem; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.9); z-index: 100; display: none; justify-content: center; align-items: center; }
+        .modal-content { background: #111; border: 1px solid var(--cyan); padding: 20px; border-radius: 15px; display: flex; flex-direction: column; gap: 10px; width: 300px; }
+        .modal-content input { background: #000; color: #fff; border: 1px solid #333; padding: 10px; border-radius: 5px; }
+        .nav-container { position: absolute; bottom: 15px; left: 0; width: 100%; display: flex; justify-content: center; gap: 10px; z-index: 20; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.2); }
+        .dot.active { background: var(--cyan); box-shadow: 0 0 10px var(--cyan); }
+    </style>
+</head>
+<body>
+    <div class="fixed-bg"><div class="ambient-orb orb-1"></div><div class="ambient-orb orb-2"></div><div class="visualizer-ring" id="ring"></div></div>
+    
+    <div class="modal-overlay" id="edit-modal">
+        <div class="modal-content">
+            <h3 style="margin:0;color:var(--cyan)">EDIT MODULE</h3>
+            <input type="hidden" id="edit-id"><input type="text" id="edit-icon" placeholder="Emoji"><input type="text" id="edit-label" placeholder="Name"><input type="text" id="edit-url" placeholder="URL">
+            <button onclick="saveAppConfig()">SAVE</button><button onclick="closeModal()" style="border-color:#444;color:#666;background:none">CANCEL</button>
+        </div>
+    </div>
+
+    <div class="dashboard-track" id="track">
+        <div class="screen" id="panel-0">
+            <div class="glass-panel">
+                <div><div style="color:var(--pink);letter-spacing:2px">// CORE.SYSTEM</div><h1 class="time" id="clock">00:00</h1><div id="date" style="color:var(--cyan);font-weight:600">MONDAY, JAN 01</div></div>
+                <div class="vitals-grid">
+                    <div class="data-row"><span>CPU:</span> <span id="cpu-load" style="color:var(--cyan)">12%</span></div>
+                    <div class="data-row"><span>TEMP:</span> <span id="temp-read" style="color:var(--pink)">42°C</span></div>
+                    <div class="data-row"><span>MEM:</span> <span style="color:var(--cyan)">32GB</span></div>
+                    <div class="data-row"><span>UPTIME:</span> <span id="uptime" style="color:var(--pink)">00:00:00</span></div>
+                    <div class="data-row" style="grid-column:span 2;border:none"><span>ADGUARD BLOCKED:</span> <span id="ad-count" style="color:var(--cyan)">14,203</span></div>
+                </div>
+                <button id="audio-btn" onclick="initAudio()">[ ACTIVATE AUDIO SYNC ]</button>
+            </div>
+        </div>
+
+        <div class="screen" id="panel-1">
+            <div class="glass-panel" style="display:grid;grid-template-columns:1.2fr 1fr;gap:20px;align-items:stretch">
+                <div style="text-align:left"><div style="color:var(--pink);letter-spacing:2px">// CLIENTS</div>
+                    <div id="dev-list">
+                        <div class="device-item"><span>HP-EliteBook</span><button class="kick-btn" onclick="this.parentElement.remove()">KICK</button></div>
+                        <div class="device-item"><span>iPhone-13</span><button class="kick-btn" onclick="this.parentElement.remove()">KICK</button></div>
+                        <div class="device-item"><span>Asus-TUF</span><button class="kick-btn" onclick="this.parentElement.remove()">KICK</button></div>
+                    </div>
+                </div>
+                <div style="background:rgba(0,0,0,0.3);border-radius:15px;padding:15px;display:flex;flex-direction:column;justify-content:center">
+                    <div style="font-size:2rem;font-weight:700" id="speed-val">0.0</div><div style="color:var(--pink);font-size:0.8rem">MBPS DOWNLOAD</div>
+                    <button onclick="runTest()" style="margin-top:20px;padding:8px">TEST NET</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="screen" id="panel-2">
+            <div class="glass-panel">
+                <div style="display:flex;justify-content:space-between;width:100%;align-items:center"><div style="color:var(--pink);letter-spacing:2px">// HUB</div><button onclick="toggleEdit()" style="width:auto;padding:5px 15px;font-size:0.7rem">EDIT GRID</button></div>
+                <div class="app-grid" id="grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="nav-container"><div class="dot active"></div><div class="dot"></div><div class="dot"></div></div>
+
+    <script>
+        // CLOCK & VITALS
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('clock').innerText = now.getHours() % 12 || 12 + ":" + now.getMinutes().toString().padStart(2, '0');
+            document.getElementById('date').innerText = now.toLocaleDateString().toUpperCase();
+            document.getElementById('cpu-load').innerText = Math.floor(Math.random()*15+5) + "%";
+            document.getElementById('temp-read').innerText = Math.floor(Math.random()*5+40) + "°C";
+            document.getElementById('ad-count').innerText = (14203 + Math.floor(Math.random()*10)).toLocaleString();
+        }, 1000);
+
+        // APP GRID LOGIC
+        let apps = JSON.parse(localStorage.getItem('neverApps')) || [
+            {id:0, icon:"🎓", label:"KIIT", url:"https://kiit.ac.in"},
+            {id:1, icon:"🎵", label:"SPOTIFY", url:"https://spotify.com"},
+            {id:2, icon:"🎬", label:"JELLYFIN", url:""},
+            {id:3, icon:"💪", label:"GYM", url:""},
+            {id:4, icon:"⚙️", label:"ROUTER", url:""},
+            {id:5, icon:"🛡️", label:"ADGUARD", url:""},
+            {id:6, icon:"📝", label:"NOTES", url:""},
+            {id:7, icon:"🎮", label:"GAMES", url:""}
+        ];
+        let editMode = false;
+        function render() {
+            const g = document.getElementById('grid'); g.innerHTML = '';
+            apps.forEach(a => {
+                const div = document.createElement('div'); div.className = 'app-tile' + (editMode?' edit':'');
+                div.innerHTML = `<div style="font-size:1.8rem">${a.icon}</div><div style="font-size:0.7rem">${a.label}</div>`;
+                div.onclick = () => editMode ? openEdit(a) : window.open(a.url, '_blank');
+                g.appendChild(div);
+            });
+        }
+        function toggleEdit() { editMode = !editMode; render(); }
+        function openEdit(a) { 
+            document.getElementById('edit-id').value=a.id; document.getElementById('edit-icon').value=a.icon;
+            document.getElementById('edit-label').value=a.label; document.getElementById('edit-url').value=a.url;
+            document.getElementById('edit-modal').style.display='flex';
+        }
+        function closeModal() { document.getElementById('edit-modal').style.display='none'; }
+        function saveAppConfig() {
+            const id = parseInt(document.getElementById('edit-id').value);
+            const a = apps.find(x => x.id === id);
+            a.icon = document.getElementById('edit-icon').value; a.label = document.getElementById('edit-label').value; a.url = document.getElementById('edit-url').value;
+            localStorage.setItem('neverApps', JSON.stringify(apps)); render(); closeModal();
+        }
+        render();
+
+        // AUDIO SYNC
+        async function initAudio() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+                const ctx = new AudioContext(); const src = ctx.createMediaStreamSource(stream);
+                const ans = ctx.createAnalyser(); src.connect(ans); ans.fftSize = 256;
+                const data = new Uint8Array(ans.frequencyBinCount);
+                document.getElementById('audio-btn').style.display = 'none';
+                function loop() {
+                    ans.getByteFrequencyData(data); let sum = 0; data.forEach(v => sum += v);
+                    document.getElementById('ring').style.transform = `scale(${1 + (sum/data.length)/150})`;
+                    requestAnimationFrame(loop);
+                }
+                loop();
+            } catch(e) { alert("Mic blocked! Use HTTPS."); }
+        }
+
+        // SCROLL DOTS
+        const track = document.getElementById('track'); const dots = document.querySelectorAll('.dot');
+        track.onscroll = () => {
+            const i = Math.round(track.scrollLeft / window.innerWidth);
+            dots.forEach((d, idx) => d.classList.toggle('active', i === idx));
+        };
+    </script>
+</body>
+</html>
