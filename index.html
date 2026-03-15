@@ -164,5 +164,106 @@
             dots.forEach((d, idx) => d.classList.toggle('active', i === idx));
         };
     </script>
+    <script>
+    // --- 1. CLOCK & DATE ---
+    setInterval(() => {
+        const now = new Date();
+        let h = now.getHours() % 12 || 12; 
+        document.getElementById('clock').innerText = `${h}:${now.getMinutes().toString().padStart(2, '0')} ${now.getHours() >= 12 ? 'PM' : 'AM'}`;
+        document.getElementById('date').innerText = now.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }).toUpperCase();
+    }, 1000);
+
+    let uptimeSeconds = 0;
+    setInterval(() => {
+        uptimeSeconds++;
+        const h = Math.floor(uptimeSeconds / 3600).toString().padStart(2, '0');
+        const m = Math.floor((uptimeSeconds % 3600) / 60).toString().padStart(2, '0');
+        const s = (uptimeSeconds % 60).toString().padStart(2, '0');
+        document.getElementById('uptime').innerText = `${h}:${m}:${s}`;
+    }, 1000);
+
+    // --- 2. THE PYTHON BRIDGE (LIVE HARDWARE TELEMETRY) ---
+    async function fetchRealTelemetry() {
+        try {
+            // NOTE: Change this IP to the actual IPv4 address of your HP laptop!
+            const response = await fetch('http://192.168.137.1:5000/vitals');
+            const data = await response.json();
+            
+            document.getElementById('cpu-load').innerText = data.cpu;
+            document.getElementById('temp-read').innerText = data.temp;
+            // You can add a span for RAM and update it here too: data.ram
+        } catch (error) {
+            console.log("Telemetry Server Offline - Boot Python Script");
+        }
+    }
+    // Ping the laptop every 2 seconds for fresh data
+    setInterval(fetchRealTelemetry, 2000);
+
+    // --- 3. SCROLL NAVIGATION ---
+    const track = document.getElementById('track'); const dots = document.querySelectorAll('.dot');
+    function scrollToPanel(index) { document.getElementById(`panel-${index}`).scrollIntoView({ behavior: 'smooth' }); }
+    track.addEventListener('scroll', () => {
+        let idx = Math.round(track.scrollLeft / window.innerWidth);
+        dots.forEach(d => d.classList.remove('active')); if(dots[idx]) dots[idx].classList.add('active');
+    });
+
+    // --- 4. EMBEDDED AUDIO ENGINE ---
+    // We create an invisible audio element in the code
+    const internalAudio = new Audio('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'); // REPLACE WITH YOUR OWN MP3 LINK OR LOCAL FILE
+    internalAudio.crossOrigin = "anonymous";
+    let audioCtx, analyser, source;
+
+    document.getElementById('audio-btn').addEventListener('click', async function() {
+        if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(e=>{});
+        
+        try {
+            // Setup the Web Audio API to wire into the MP3 instead of the Mic
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioCtx.createAnalyser();
+                source = audioCtx.createMediaElementSource(internalAudio);
+                source.connect(analyser);
+                analyser.connect(audioCtx.destination); // Play out loud
+                analyser.fftSize = 256;
+            }
+
+            // Play the music!
+            if (internalAudio.paused) {
+                audioCtx.resume();
+                internalAudio.play();
+                this.innerText = "[ PAUSE AUDIO ENGINE ]";
+                this.style.color = "var(--cyan)";
+                this.style.borderColor = "var(--cyan)";
+                document.getElementById('ring').style.animation = 'none';
+
+                const data = new Uint8Array(analyser.frequencyBinCount);
+                
+                function animate() {
+                    if (internalAudio.paused) return; // Stop animation if paused
+                    requestAnimationFrame(animate); 
+                    analyser.getByteFrequencyData(data);
+                    
+                    // Focus heavily on the lower bass frequencies for the glow
+                    let bassSum = 0; 
+                    for(let i=0; i<10; i++) bassSum += data[i]; 
+                    let avgBass = bassSum / 10;
+
+                    document.getElementById('ring').style.transform = `scale(${1 + (avgBass/200)})`;
+                    document.getElementById('ring').style.boxShadow = `inset 0 0 20px rgba(236,72,153,0.1), 0 0 ${40 + avgBass*2}px rgba(6,182,212,${0.1 + avgBass/200})`;
+                }
+                animate();
+            } else {
+                internalAudio.pause();
+                this.innerText = "[ ACTIVATE AUDIO ENGINE ]";
+                this.style.color = "#fff";
+                document.getElementById('ring').style.transform = `scale(1)`;
+                document.getElementById('ring').style.animation = 'breathe 4s infinite alternate ease-in-out';
+            }
+        } catch (err) { alert("Audio Engine Error: " + err); }
+    });
+
+    // (Keep your App Grid and Speedometer code below this point)
+    // ...
+</script>
 </body>
 </html>
