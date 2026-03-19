@@ -1,441 +1,1569 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Never Center v6.0 - The Master Build</title>
-    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --cyan: #06b6d4; --pink: #ec4899; --purple: #8b5cf6; --yellow: #eab308;
-            --bg: #09030f; --glass: rgba(15, 10, 20, 0.45); 
-            --glass-border: rgba(236, 72, 153, 0.15); --glass-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.9);
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>NEVER CENTER</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    /* ==========================================================
+       NEVER CENTER — Standalone GitHub Pages Edition
 
-        body { 
-            background-color: var(--bg); color: #fff; font-family: 'Rajdhani', sans-serif; 
-            margin: 0; overflow: hidden; 
-            background-image: linear-gradient(rgba(6, 182, 212, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(6, 182, 212, 0.03) 1px, transparent 1px);
-            background-size: 30px 30px; 
-        }
-        
-        .fixed-bg { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; pointer-events: none; display: flex; justify-content: center; align-items: center; }
-        .ambient-orb { position: absolute; border-radius: 50%; filter: blur(90px); animation: float 20s infinite alternate ease-in-out, colorShift 15s infinite alternate; opacity: 0.6; }
-        .orb-1 { width: 45vw; height: 45vw; background: rgba(236, 72, 153, 0.2); top: -10%; left: -10%; }
-        .orb-2 { width: 55vw; height: 55vw; background: rgba(6, 182, 212, 0.2); bottom: -20%; right: -10%; animation-delay: -10s; }
+```
+   Architecture: This file is completely independent of
+   Homepage's Docker container. It has THREE swipeable pages:
+   
+     Page 0 → Giant live clock + CPU/RAM cards + network bars
+     Page 1 → Homepage widgets (embedded in an <iframe>)
+     Page 2 → Custom live panels (gauges, orbs, ticker, etc)
+   
+   Because this runs outside of React entirely, there are
+   zero race conditions. The clock and network bars always
+   render first, immediately, on page load.
+   
+   TO USE: Push this file to your GitHub repo
+   (adarsh03suman/never-center) and open the GitHub Pages URL
+   on your Vivo phone in fullscreen / PWA mode.
+   On your ASUS: set this as the browser homepage.
+   ========================================================== */
 
-        @keyframes float { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(10vw, 5vh) scale(1.2); } }
-        @keyframes colorShift { 0% { filter: blur(90px) hue-rotate(0deg); } 100% { filter: blur(90px) hue-rotate(60deg); } }
+/* ── CSS VARIABLES ─────────────────────────────────────── */
+:root {
+  --neon-cyan:   #00ffc8;
+  --neon-blue:   #0090ff;
+  --neon-purple: #a020f0;
+  --neon-amber:  #ffaa00;
+  --neon-red:    #ff003c;
+  --glass-bg:    rgba(8, 13, 20, 0.55);
+  --glass-b:     rgba(0, 255, 200, 0.13);
+  --font-hud:    'Rajdhani', sans-serif;
+  --font-mono:   'Share Tech Mono', monospace;
+  --radius:      13px;
+}
 
-        .visualizer-ring {
-            position: absolute; width: 85vh; height: 85vh; max-width: 650px; max-height: 650px;
-            border: 2px solid rgba(236, 72, 153, 0.3); border-radius: 50%;
-            box-shadow: inset 0 0 20px rgba(236, 72, 153, 0.1), 0 0 40px rgba(6, 182, 212, 0.1);
-            transition: transform 0.1s ease-out, box-shadow 0.1s ease-out; animation: breathe 4s infinite alternate ease-in-out;
-        }
-        @keyframes breathe { 0% { transform: scale(1); box-shadow: 0 0 20px rgba(236, 72, 153, 0.1); } 100% { transform: scale(1.02); box-shadow: 0 0 50px rgba(6, 182, 212, 0.2); } }
+/* ── RESET & BASE ───────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+::-webkit-scrollbar { display: none; }
+* { -ms-overflow-style: none; scrollbar-width: none; }
 
-        .dashboard-track { display: flex; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; height: 100vh; width: 100vw; scroll-behavior: smooth; z-index: 10; position: relative; }
-        .dashboard-track::-webkit-scrollbar { display: none; }
-        .screen { min-width: 100vw; height: 100vh; scroll-snap-align: center; scroll-snap-stop: always; display: flex; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; }
-        .glass-panel { background: var(--glass); padding: 1.5rem; border-radius: 20px; border: 1px solid var(--glass-border); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); width: 95vw; max-width: 900px; height: 85vh; max-height: 450px; box-shadow: var(--glass-shadow); box-sizing: border-box; }
-        .split-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; height: 100%; }
+html, body {
+  width: 100vw; height: 100vh;
+  overflow: hidden;
+  font-family: var(--font-hud);
+  color: #e8f4f0;
+  background: #000;
+  touch-action: pan-y; /* allow vertical scroll inside pages */
+}
 
-        .sys-text { color: var(--pink); font-size: 0.85rem; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 5px; font-weight: 700;}
-        h1.time { font-size: 5rem; margin: 0; letter-spacing: -2px; text-shadow: 0 0 20px rgba(236, 72, 153, 0.5); font-weight: 600; line-height: 1; text-align: center;}
-        .date-text { font-size: 1.2rem; color: var(--cyan); font-weight: 600; letter-spacing: 1px; text-align: center;}
-        
-        button { background: rgba(236, 72, 153, 0.1); color: #fff; border: 1px solid var(--pink); padding: 10px 15px; font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.9rem; border-radius: 8px; cursor: pointer; transition: all 0.2s; text-transform: uppercase; width: 100%;}
-        button:hover { background: var(--pink); box-shadow: 0 0 20px rgba(236, 72, 153, 0.6); transform: scale(1.02); }
+/* ── ANIMATED NEBULA BACKGROUND ─────────────────────────── */
+/* Fixed behind everything so it never scrolls or flickers */
+body::after {
+  content: '';
+  position: fixed; inset: 0; z-index: -2;
+  background: linear-gradient(-45deg, #050b14, #130a1c, #041520, #000);
+  background-size: 400% 400%;
+  animation: nebula 18s ease infinite;
+}
 
-        .vitals-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 450px; text-align: left; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); margin-top: 15px;}
-        .data-row { display: flex; justify-content: space-between; font-size: 0.95rem; border-bottom: 1px dashed rgba(255,255,255,0.05); padding-bottom: 5px;}
-        .val-cyan { color: var(--cyan); font-weight: 700; text-shadow: 0 0 10px rgba(6, 182, 212, 0.4);}
-        .val-pink { color: var(--pink); font-weight: 700; text-shadow: 0 0 10px rgba(236, 72, 153, 0.4);}
+/* Subtle film-grain texture on top of the nebula */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: -1;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+  pointer-events: none; opacity: 0.4;
+}
 
-        /* Speedometer & Network */
-        .gauge-container { position: relative; width: 130px; height: 130px; margin: 0 auto; display: flex; justify-content: center; align-items: center;}
-        .gauge-svg { transform: rotate(-90deg); width: 100%; height: 100%; filter: drop-shadow(0 0 10px rgba(6, 182, 212, 0.5));}
-        .gauge-bg { fill: none; stroke: rgba(255,255,255,0.05); stroke-width: 8; }
-        .gauge-progress { fill: none; stroke: url(#grad); stroke-width: 8; stroke-dasharray: 440; stroke-dashoffset: 440; stroke-linecap: round; transition: stroke-dashoffset 0.1s linear; }
-        .gauge-value { font-size: 2.2rem; font-weight: 700; color: #fff; position: absolute; }
-        .device-list { list-style: none; padding: 0; margin: 0; overflow-y: auto; height: 100%; background: rgba(0,0,0,0.2); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); padding: 10px;}
-        .device-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px dashed rgba(255,255,255,0.1); border-radius: 8px; }
-        .kick-btn { background: transparent; border: 1px solid #ef4444; color: #ef4444; padding: 4px 10px; font-size: 0.8rem; border-radius: 4px; margin-left: 10px; width: auto;}
+@keyframes nebula {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
 
-        /* Focus & Memory (Brain Dump) */
-        .timer-display { font-size: 5.5rem; font-weight: 700; color: #fff; text-shadow: 0 0 20px rgba(6, 182, 212, 0.5); text-align: center; margin: 10px 0;}
-        .task-input { width: 100%; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 12px; border-radius: 8px; font-family: 'Rajdhani', sans-serif; font-size: 1rem; outline: none; margin-bottom: 10px; box-sizing: border-box;}
-        .task-input:focus { border-color: var(--cyan); }
-        .task-list { list-style: none; padding: 0; margin: 0; overflow-y: auto; height: 150px; font-size: 0.95rem; }
-        .task-list li { padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center;}
-        .task-list li span { flex-grow: 1; margin-left: 10px; }
-        .del-btn { color: #ef4444; cursor: pointer; font-weight: bold; padding: 0 5px;}
+/* ============================================================
+   SWIPE SYSTEM
+   Three pages sit side-by-side in a 300vw wide track.
+   CSS transform: translateX(-N * 100vw) slides between them.
+   Touch gestures and dot navigation trigger the transform.
+   ============================================================ */
 
-        /* App Grid */
-        .app-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; height: 100%; padding-top: 10px; }
-        .app-tile { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; transition: all 0.2s; height: 100%; min-height: 85px; position: relative;}
-        .app-tile:hover { background: rgba(236, 72, 153, 0.15); border-color: var(--pink); transform: translateY(-3px); }
-        .app-icon { font-size: 1.8rem; margin-bottom: 5px; }
-        .app-label { font-size: 0.8rem; font-weight: 600; color: #cbd5e1; letter-spacing: 1px; text-align: center; padding: 0 5px;}
-        .edit-mode-active .app-tile { animation: jiggle 0.3s infinite alternate; border-color: var(--cyan); background: rgba(6, 182, 212, 0.1); }
-        @keyframes jiggle { 0% { transform: rotate(-1deg); } 100% { transform: rotate(1deg); } }
+#swipe-track {
+  display: flex;
+  flex-direction: row;
+  width: 300vw;
+  height: 100vh;
+  transition: transform 0.42s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  will-change: transform;
+}
 
-        /* Modals & Nav */
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); z-index: 100; display: none; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
-        .modal-content { background: #0f0a14; border: 1px solid var(--cyan); padding: 25px; border-radius: 16px; width: 85%; max-width: 400px; display: flex; flex-direction: column; gap: 15px; box-shadow: 0 0 30px rgba(6,182,212,0.3);}
-        .modal-content input { background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 12px; border-radius: 8px; font-family: inherit; font-size: 1rem; outline: none; }
-        .nav-container { position: absolute; bottom: 15px; left: 0; width: 100%; display: flex; justify-content: center; gap: 15px; z-index: 20;}
-        .dot { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.2); cursor: pointer; transition: 0.3s; }
-        .dot.active { background: var(--cyan); box-shadow: 0 0 15px var(--cyan); transform: scale(1.3);}
-    </style>
+.page {
+  width: 100vw;
+  height: 100vh;
+  flex-shrink: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* ── PAGE DOTS ──────────────────────────────────────────── */
+#dots {
+  position: fixed; bottom: 14px; left: 50%;
+  transform: translateX(-50%);
+  display: flex; gap: 9px; z-index: 9999;
+}
+
+.dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: rgba(0,255,200,0.2);
+  border: 1px solid rgba(0,255,200,0.4);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.dot.active {
+  background: var(--neon-cyan);
+  box-shadow: 0 0 10px var(--neon-cyan);
+  transform: scale(1.35);
+}
+
+/* Pulsing right-edge hint: "swipe left for more" */
+#swipe-hint {
+  position: fixed; right: 0; top: 50%;
+  transform: translateY(-50%);
+  width: 3px; height: 60px;
+  background: linear-gradient(to bottom, transparent, var(--neon-cyan), transparent);
+  border-radius: 2px;
+  animation: hint-pulse 2.5s ease-in-out infinite;
+  z-index: 9999;
+  transition: opacity 0.5s ease;
+}
+
+@keyframes hint-pulse {
+  0%,100% { opacity: 0.2; }
+  50%      { opacity: 0.75; }
+}
+
+/* ============================================================
+   PAGE 0 — GIANT CLOCK
+   ============================================================ */
+
+#page-clock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 18px 44px;
+  gap: 0;
+}
+
+/* ── THE CLOCK ITSELF ───────────────────────────────────── */
+/* clamp() makes the font fill the screen on any device size.
+   On the Vivo Z1 Pro (390px wide in landscape) this renders
+   at about 78px — big enough to read across the room. */
+#clock {
+  font-family: var(--font-hud);
+  font-size: clamp(70px, 19vw, 160px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #eafff8;
+  line-height: 1;
+  text-shadow:
+    0 0 30px rgba(0,255,200,0.55),
+    0 0 80px rgba(0,255,200,0.18),
+    0 0 2px  rgba(255,255,255,0.9);
+  animation: clock-glow 4s ease-in-out infinite alternate;
+}
+
+@keyframes clock-glow {
+  0%   { text-shadow: 0 0 20px rgba(0,255,200,0.4),  0 0 2px rgba(255,255,255,0.8); }
+  100% { text-shadow: 0 0 55px rgba(0,255,200,0.95), 0 0 100px rgba(0,255,200,0.28), 0 0 3px rgba(255,255,255,0.95); }
+}
+
+#ampm {
+  font-family: var(--font-mono);
+  font-size: clamp(12px, 2.2vw, 19px);
+  color: var(--neon-cyan); opacity: 0.65;
+  letter-spacing: 0.22em; margin-top: 2px; margin-bottom: 4px;
+}
+
+#date-line {
+  font-family: var(--font-hud);
+  font-size: clamp(13px, 3vw, 22px);
+  font-weight: 500; letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(200,255,240,0.48);
+  margin-bottom: 18px;
+}
+
+/* ── NODE STAT CARDS ─────────────────────────────────────── */
+/* Two side-by-side cards showing ASUS + HP live CPU/RAM */
+#node-strip {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px; width: 100%; max-width: 680px;
+  margin-bottom: 12px;
+}
+
+.node-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--glass-b);
+  border-radius: var(--radius);
+  padding: 11px 13px;
+  display: flex; flex-direction: column; gap: 7px;
+}
+
+.node-title {
+  font-size: 0.57rem; letter-spacing: 0.2em;
+  text-transform: uppercase; color: var(--neon-cyan);
+  font-weight: 700; display: flex; align-items: center; gap: 6px;
+}
+
+/* The pulsing dot that shows online/offline status */
+.online-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--neon-cyan);
+  box-shadow: 0 0 6px var(--neon-cyan);
+  animation: hb 1.8s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.online-dot.offline {
+  background: var(--neon-red);
+  box-shadow: 0 0 4px var(--neon-red);
+  animation: none;
+}
+
+@keyframes hb {
+  0%,100% { transform: scale(1);   opacity: 1; }
+  40%      { transform: scale(1.6); opacity: 0.8; }
+}
+
+/* Stat row: label | progress bar | value */
+.stat-row {
+  display: grid;
+  grid-template-columns: 34px 1fr 38px;
+  align-items: center; gap: 7px;
+}
+
+.stat-label {
+  font-size: 0.51rem; letter-spacing: 0.1em;
+  text-transform: uppercase; color: rgba(200,240,230,0.4);
+  font-family: var(--font-mono);
+}
+
+.stat-track {
+  height: 4px; background: rgba(255,255,255,0.06);
+  border-radius: 2px; overflow: hidden;
+}
+
+/* The fill width and color are set by JavaScript */
+.stat-fill {
+  height: 100%; border-radius: 2px;
+  transition: width 1s ease, background 0.5s ease;
+  background: var(--neon-cyan);
+  box-shadow: 0 0 5px var(--neon-cyan);
+  width: 0%;
+}
+
+.stat-val {
+  font-size: 0.59rem; color: rgba(200,240,230,0.75);
+  font-family: var(--font-mono); text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── REAL-TIME NETWORK MONITOR ───────────────────────────── */
+/* Shows live download/upload speeds for both machines.
+   Data comes from Netdata's REST API every 2 seconds. */
+#net-strip {
+  width: 100%; max-width: 680px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--glass-b);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  display: flex; flex-direction: column; gap: 7px;
+}
+
+.net-title {
+  font-size: 0.54rem; letter-spacing: 0.18em;
+  text-transform: uppercase; color: rgba(0,255,200,0.38);
+  font-family: var(--font-hud);
+}
+
+/* Each row: label | download bar | dl value | upload bar | ul value */
+.net-row {
+  display: grid;
+  grid-template-columns: 78px 1fr 46px 1fr 46px;
+  align-items: center; gap: 7px;
+}
+
+.net-label {
+  font-size: 0.54rem; color: rgba(200,240,230,0.45);
+  font-family: var(--font-mono); text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.net-track {
+  height: 5px; background: rgba(255,255,255,0.05);
+  border-radius: 3px; overflow: hidden;
+}
+
+.net-bar {
+  height: 100%; border-radius: 3px;
+  transition: width 0.7s ease;
+  min-width: 2px; /* always show a sliver so bars feel alive */
+}
+
+.net-bar.dl { background: var(--neon-cyan);   box-shadow: 0 0 5px var(--neon-cyan); }
+.net-bar.ul { background: var(--neon-purple); box-shadow: 0 0 5px var(--neon-purple); }
+
+.net-val {
+  font-size: 0.58rem; font-family: var(--font-mono);
+  color: rgba(200,240,230,0.7); text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================
+   PAGE 1 — HOMEPAGE IFRAME
+   The iframe embeds your Homepage Docker container (which
+   runs at 100.103.55.109:3000 on the ASUS TUF). Because this
+   page is served from GitHub Pages (a different origin),
+   the iframe cannot be scripted — but it displays perfectly.
+   ============================================================ */
+
+#page-widgets {
+  padding: 0;
+  background: transparent; /* show nebula behind the iframe */
+}
+
+/* Small header bar above the iframe to give context */
+#widget-header {
+  height: 36px;
+  background: rgba(5,10,16,0.75);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(0,255,200,0.08);
+  display: flex; align-items: center; justify-content: center;
+  gap: 8px;
+}
+
+#widget-header span {
+  font-size: 0.55rem; letter-spacing: 0.22em;
+  text-transform: uppercase; color: rgba(0,255,200,0.45);
+  font-family: var(--font-hud);
+}
+
+/* The iframe takes the remaining height below the header */
+#homepage-frame {
+  width: 100%; height: calc(100vh - 36px);
+  border: none; display: block;
+  background: transparent;
+}
+
+/* ============================================================
+   PAGE 2 — CUSTOM LIVE PANELS
+   All our JS-powered widgets: gauges, orbs, sparklines,
+   AdGuard ticker, Tailscale grid, process spotlight, badges.
+   ============================================================ */
+
+#page-panels {
+  padding: 14px 14px 44px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+
+.panel-header {
+  font-size: 0.56rem; letter-spacing: 0.25em;
+  text-transform: uppercase; color: rgba(0,255,200,0.28);
+  text-align: center; padding: 4px 0 2px;
+}
+
+/* ── SHARED PANEL CARD ─────────────────────────────────── */
+.panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-b);
+  border-radius: var(--radius);
+  padding: 13px 16px;
+  position: relative; overflow: hidden;
+}
+
+/* Top edge glow line on every panel card */
+.panel::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
+  opacity: 0.38;
+}
+
+.panel-title {
+  font-family: var(--font-hud);
+  font-size: 0.58rem; letter-spacing: 0.18em;
+  text-transform: uppercase; color: rgba(0,255,200,0.42);
+  margin-bottom: 10px;
+}
+
+/* ── TWO-COLUMN ROW LAYOUT FOR PANELS ──────────────────── */
+.panel-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+/* ── RAM/SWAP PRESSURE ORBS ─────────────────────────────── */
+#orb-container {
+  display: flex; align-items: center;
+  justify-content: center; gap: 18px; padding: 6px 0;
+}
+
+.orb-wrap { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+
+/* Size, color, and glow are all set dynamically by JS */
+.orb {
+  border-radius: 50%;
+  transition: width 1.2s cubic-bezier(0.34,1.56,0.64,1),
+              height 1.2s cubic-bezier(0.34,1.56,0.64,1),
+              background 1.5s ease, box-shadow 1.5s ease;
+  animation: orb-pulse 2.5s ease-in-out infinite;
+}
+
+@keyframes orb-pulse {
+  0%,100% { opacity: 0.85; transform: scale(1); }
+  50%      { opacity: 1;    transform: scale(1.06); }
+}
+
+.orb-label { font-size: 0.52rem; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(200,240,230,0.38); font-family: var(--font-mono); }
+.orb-val   { font-size: 0.7rem;  color: var(--neon-cyan); font-weight: 700; font-family: var(--font-mono); }
+
+/* ── DISK I/O BARS ─────────────────────────────────────── */
+#disk-container { display: flex; flex-direction: column; gap: 6px; }
+
+.disk-row {
+  display: grid;
+  grid-template-columns: 86px 1fr 58px;
+  align-items: center; gap: 9px;
+}
+
+.disk-label { font-size: 0.57rem; color: rgba(200,240,230,0.48); text-transform: uppercase; letter-spacing: 0.09em; font-family: var(--font-mono); }
+.disk-track { height: 5px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden; }
+.disk-fill  { height: 100%; border-radius: 3px; transition: width 0.8s ease; }
+.disk-fill.read  { background: var(--neon-cyan);  box-shadow: 0 0 5px var(--neon-cyan); }
+.disk-fill.write { background: var(--neon-amber); box-shadow: 0 0 5px var(--neon-amber); }
+.disk-val   { font-size: 0.58rem; color: rgba(200,240,230,0.65); text-align: right; font-family: var(--font-mono); }
+
+/* ── NETWORK SPEED GAUGES ──────────────────────────────── */
+#gauge-container { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; padding: 4px 0; }
+.gauge-wrap { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 106px; }
+.gauge-fill { fill: none; stroke-width: 9; stroke-linecap: round; transition: stroke-dashoffset 0.8s cubic-bezier(0.34,1.56,0.64,1), stroke 0.5s ease; }
+.gauge-fill.dl { stroke: var(--neon-cyan);   filter: drop-shadow(0 0 4px var(--neon-cyan)); }
+.gauge-fill.ul { stroke: var(--neon-purple); filter: drop-shadow(0 0 4px var(--neon-purple)); }
+.gauge-label { font-family: var(--font-hud); font-size: 0.58rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(200,240,230,0.42); }
+
+/* ── PROCESS SPOTLIGHT ─────────────────────────────────── */
+#process-container { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.proc-card {
+  flex: 1; min-width: 140px; padding: 9px 12px;
+  background: rgba(0,0,0,0.28);
+  border: 1px solid rgba(255,0,60,0.2);
+  border-radius: 10px;
+  display: flex; flex-direction: column; gap: 3px;
+  position: relative; overflow: hidden;
+}
+
+.proc-card::before {
+  content: '⚠ MOST WANTED';
+  position: absolute; top: 0; left: 0; right: 0;
+  background: rgba(255,0,60,0.1); color: var(--neon-red);
+  font-size: 0.46rem; letter-spacing: 0.18em;
+  padding: 2px 8px; font-family: var(--font-hud); font-weight: 700;
+}
+
+.proc-node { font-size: 0.52rem; color: rgba(200,240,230,0.28); font-family: var(--font-mono); margin-top: 12px; }
+.proc-name { font-size: 0.78rem; font-family: var(--font-hud); font-weight: 700; color: var(--neon-red); letter-spacing: 0.06em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 0 8px rgba(255,0,60,0.4); }
+.proc-pct  { font-size: 1.25rem; font-family: var(--font-hud); font-weight: 700; color: #ff4060; }
+.proc-meta { font-size: 0.52rem; color: rgba(200,240,230,0.28); font-family: var(--font-mono); }
+
+/* ── PING SPARKLINES ───────────────────────────────────── */
+#ping-container { display: flex; flex-direction: column; gap: 9px; }
+
+.ping-row {
+  display: grid;
+  grid-template-columns: 76px 1fr 50px;
+  align-items: center; gap: 10px;
+}
+
+.ping-label { font-size: 0.55rem; color: rgba(200,240,230,0.46); text-transform: uppercase; letter-spacing: 0.09em; font-family: var(--font-mono); }
+.spark-wrap { position: relative; height: 26px; }
+.spark-wrap svg { width: 100%; height: 100%; overflow: visible; }
+.spark-line { fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.spark-area { opacity: 0.1; }
+.ping-row.wan .spark-line { stroke: var(--neon-blue); }
+.ping-row.wan .spark-area { fill:   var(--neon-blue); }
+.ping-row.wan .spark-dot  { fill:   var(--neon-blue); }
+.ping-row.ts  .spark-line { stroke: var(--neon-cyan); }
+.ping-row.ts  .spark-area { fill:   var(--neon-cyan); }
+.ping-row.ts  .spark-dot  { fill:   var(--neon-cyan); }
+.ping-val { font-size: 0.68rem; font-variant-numeric: tabular-nums; text-align: right; font-weight: 700; font-family: var(--font-mono); }
+.ping-val.good { color: var(--neon-cyan); }
+.ping-val.ok   { color: var(--neon-amber); }
+.ping-val.bad  { color: var(--neon-red); }
+
+/* ── ADGUARD DNS TICKER ─────────────────────────────────── */
+#ticker-wrap { overflow: hidden; height: 22px; position: relative; }
+
+#ticker-tape {
+  display: flex; gap: 30px; white-space: nowrap;
+  animation: ticker 30s linear infinite;
+  font-size: 0.62rem; font-family: var(--font-mono);
+  color: rgba(200,240,230,0.58); align-items: center; height: 100%;
+}
+
+@keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+
+.t-item  { display: inline-flex; align-items: center; gap: 5px; }
+.t-block { color: var(--neon-red); font-weight: 700; }
+.t-allow { color: rgba(200,240,230,0.38); }
+.t-sep   { color: rgba(0,255,200,0.2); }
+
+/* ── TAILSCALE PEER GRID ───────────────────────────────── */
+#peer-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.peer {
+  display: flex; flex-direction: column; gap: 3px;
+  padding: 7px 11px;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid; border-radius: 8px; min-width: 108px;
+  transition: border-color 0.4s ease;
+}
+
+.peer.online  { border-color: rgba(0,255,200,0.35); }
+.peer.offline { border-color: rgba(255,0,60,0.22); opacity: 0.5; }
+.peer-name    { font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(200,240,230,0.8); font-family: var(--font-hud); font-weight: 600; }
+.peer-ip      { font-size: 0.53rem; color: rgba(200,240,230,0.28); font-family: var(--font-mono); }
+.peer-status  { display: flex; align-items: center; gap: 5px; font-size: 0.55rem; }
+.peer-hb      { width: 6px; height: 6px; border-radius: 50%; }
+.peer.online  .peer-hb { background: var(--neon-cyan); box-shadow: 0 0 5px var(--neon-cyan); animation: hb 1.8s ease-in-out infinite; }
+.peer.offline .peer-hb { background: var(--neon-red); }
+.peer.online  .peer-status span { color: var(--neon-cyan); font-family: var(--font-mono); font-size: 0.55rem; }
+.peer.offline .peer-status span { color: var(--neon-red);  font-family: var(--font-mono); font-size: 0.55rem; }
+
+/* ── UPTIME BADGES ─────────────────────────────────────── */
+#badge-container { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+.badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 11px; border-radius: 999px; border: 1px solid;
+  font-size: 0.58rem; letter-spacing: 0.12em; text-transform: uppercase;
+  font-family: var(--font-hud); font-weight: 700;
+}
+
+.badge.iron    { border-color: rgba(100,130,150,0.5); color: rgba(150,180,200,0.8); background: rgba(100,130,150,0.08); }
+.badge.bronze  { border-color: rgba(205,127,50,0.6);  color: #cd7f32; background: rgba(205,127,50,0.08); }
+.badge.silver  { border-color: rgba(180,200,220,0.6); color: #b8d0e0; background: rgba(180,200,220,0.08); }
+.badge.gold    { border-color: rgba(255,200,0,0.7);   color: #ffc800; background: rgba(255,200,0,0.08); box-shadow: 0 0 12px rgba(255,200,0,0.2); animation: badge-glow 3s ease-in-out infinite; }
+.badge.diamond { border-color: rgba(0,255,200,0.8);   color: var(--neon-cyan); background: rgba(0,255,200,0.08); animation: badge-diamond 2s ease-in-out infinite; }
+
+@keyframes badge-glow    { 0%,100% { box-shadow: 0 0 10px rgba(255,200,0,0.2); } 50% { box-shadow: 0 0 20px rgba(255,200,0,0.45); } }
+@keyframes badge-diamond { 0%,100% { box-shadow: 0 0 14px rgba(0,255,200,0.25); } 50% { box-shadow: 0 0 26px rgba(0,255,200,0.6); } }
+
+.badge-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; animation: dot-blink 1.5s ease-in-out infinite; }
+@keyframes dot-blink { 0%,100% { opacity: 1; } 50% { opacity: 0.15; } }
+
+/* ── UTILITY ────────────────────────────────────────────── */
+.divider { height: 1px; background: linear-gradient(90deg, transparent, rgba(0,255,200,0.11), transparent); margin: 3px 0; }
+
+/* Page entrance animation — panels fade in when you swipe to page 2 */
+@keyframes panel-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+#page-panels .panel { animation: panel-in 0.4s ease both; }
+#page-panels .panel:nth-child(2) .panel-row > *:nth-child(1) { animation-delay: 0.05s; }
+#page-panels .panel:nth-child(2) .panel-row > *:nth-child(2) { animation-delay: 0.10s; }
+```
+
+  </style>
 </head>
 <body>
-    <div class="fixed-bg">
-        <div class="ambient-orb orb-1"></div>
-        <div class="ambient-orb orb-2"></div>
-        <div class="visualizer-ring" id="ring"></div>
+
+<!-- ── SWIPE TRACK — holds all 3 pages side by side ───────── -->
+
+<div id="swipe-track">
+
+  <!-- ===================================================
+       PAGE 0: GIANT CLOCK
+       =================================================== -->
+
+  <div class="page" id="page-clock">
+
+```
+<div id="clock">00:00</div>
+<div id="ampm">AM</div>
+<div id="date-line">Loading…</div>
+
+<!-- ASUS TUF + HP SERVER stat cards -->
+<div id="node-strip">
+
+  <div class="node-card" id="card-asus">
+    <div class="node-title">
+      <div class="online-dot" id="dot-asus"></div>
+      ASUS TUF · HUB
     </div>
-
-    <div class="modal-overlay" id="edit-modal">
-        <div class="modal-content">
-            <div class="sys-text" style="color: var(--cyan);">// EDIT.MODULE</div>
-            <input type="hidden" id="edit-id">
-            <input type="text" id="edit-icon" placeholder="Emoji Icon">
-            <input type="text" id="edit-label" placeholder="Display Name">
-            <input type="text" id="edit-url" placeholder="URL">
-            <div style="display: flex; gap: 10px; margin-top: 10px;">
-                <button onclick="saveAppConfig()" style="background: rgba(6,182,212,0.2); border-color: var(--cyan);">SAVE</button>
-                <button onclick="closeModal()" style="background: transparent; border-color: #64748b; color: #64748b;">CANCEL</button>
-            </div>
-        </div>
+    <div class="stat-row">
+      <span class="stat-label">CPU</span>
+      <div class="stat-track"><div class="stat-fill" id="bar-asus-cpu"></div></div>
+      <span class="stat-val"  id="val-asus-cpu">—</span>
     </div>
-
-    <div class="dashboard-track" id="track">
-        
-        <div class="screen" id="panel-0">
-            <div class="glass-panel" style="display: flex; flex-direction: column; justify-content: space-evenly; align-items: center;">
-                <div>
-                    <div class="sys-text" style="text-align: center;">// NEVER.CENTER // CORE</div>
-                    <h1 class="time" id="clock">12:00</h1>
-                    <div class="date-text" id="date">MONDAY, JAN 01</div>
-                </div>
-                
-                <div class="vitals-grid">
-                    <div class="data-row"><span>CPU:</span> <span class="val-cyan" id="cpu-load">--%</span></div>
-                    <div class="data-row"><span>TMP:</span> <span class="val-pink" id="temp-read">--°C</span></div>
-                    <div class="data-row"><span>UPT:</span> <span class="val-pink" id="uptime">00:00:00</span></div>
-                    <div class="data-row"><span>ADG:</span> <span class="val-cyan" id="ad-count">14,203</span></div>
-                </div>
-
-                <div style="width:100%; max-width: 450px;">
-                    <button id="audio-btn" style="margin-top: 0;">[ ACTIVATE AUDIO ENGINE ]</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="screen" id="panel-1">
-            <div class="glass-panel split-panel">
-                <div style="display: flex; flex-direction: column; justify-content: center; align-items: center;">
-                    <div class="sys-text">// FOCUS.PROTOCOL</div>
-                    <div class="timer-display" id="timer-val">25:00</div>
-                    <div style="display: flex; gap: 10px; width: 100%;">
-                        <button onclick="startTimer()" style="background: rgba(6,182,212,0.1); border-color: var(--cyan); color: var(--cyan);">ENGAGE</button>
-                        <button onclick="resetTimer()" style="background: transparent; border-color: #64748b; color: #64748b;">ABORT</button>
-                    </div>
-                </div>
-
-                <div style="display: flex; flex-direction: column; background: rgba(0,0,0,0.2); border-radius: 12px; padding: 15px; border: 1px solid rgba(255,255,255,0.05);">
-                    <div class="sys-text">// BRAIN.DUMP.BUFFER</div>
-                    <input type="text" class="task-input" id="task-input" placeholder="Offload thought... (Enter)">
-                    <ul class="task-list" id="tasks-list"></ul>
-                </div>
-            </div>
-        </div>
-
-        <div class="screen" id="panel-2">
-            <div class="glass-panel split-panel">
-                <div style="display: flex; flex-direction: column;">
-                    <div class="sys-text">// CONNECTED.CLIENTS</div>
-                    <ul class="device-list" id="dev-list">
-                        <li class="device-item"><div><span style="color:var(--cyan);">●</span> <strong style="color:#fff;">EliteBook-G1a</strong><br><span style="font-size:0.75rem; color:#94a3b8;">192.168.0.101</span></div><button class="kick-btn" onclick="kickDevice(this)">KICK</button></li>
-                        <li class="device-item"><div><span style="color:var(--cyan);">●</span> <strong style="color:#fff;">iPhone-13</strong><br><span style="font-size:0.75rem; color:#94a3b8;">192.168.0.104</span></div><button class="kick-btn" onclick="kickDevice(this)">KICK</button></li>
-                        <li class="device-item"><div><span style="color:var(--yellow);">●</span> <strong style="color:#fff;">Asus-TUF</strong><br><span style="font-size:0.75rem; color:#94a3b8;">192.168.0.105</span></div><button class="kick-btn" onclick="kickDevice(this)">KICK</button></li>
-                    </ul>
-                </div>
-
-                <div style="display: flex; flex-direction: column; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.2); border-radius: 12px; padding: 15px; border: 1px solid rgba(255,255,255,0.05);">
-                    <div class="sys-text" id="speed-label">// SPEED.TEST</div>
-                    <div class="gauge-container">
-                        <svg class="gauge-svg" viewBox="0 0 150 150">
-                            <defs><linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#06b6d4" /><stop offset="100%" stop-color="#ec4899" /></linearGradient></defs>
-                            <circle class="gauge-bg" cx="75" cy="75" r="70"></circle>
-                            <circle class="gauge-progress" id="gauge-fill" cx="75" cy="75" r="70"></circle>
-                        </svg>
-                        <div class="gauge-value" id="speed-val">0.0</div>
-                    </div>
-                    
-                    <div style="display: flex; justify-content: space-around; width: 100%; text-align: center; margin-top: 10px;">
-                        <div><span style="font-size:0.7rem; color:var(--cyan);">DL (MBPS)</span><br><strong id="res-dl" style="font-size:1.1rem;">--</strong></div>
-                        <div><span style="font-size:0.7rem; color:var(--pink);">UL (MBPS)</span><br><strong id="res-ul" style="font-size:1.1rem;">--</strong></div>
-                        <div><span style="font-size:0.7rem; color:var(--yellow);">PING</span><br><strong id="res-ping" style="font-size:1.1rem;">--</strong></div>
-                    </div>
-
-                    <button id="test-btn" onclick="runSpeedTest()" style="margin-top: 10px;">START DIAGNOSTIC</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="screen" id="panel-3">
-            <div class="glass-panel" style="display: flex; flex-direction: column;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <div class="sys-text">// SMART.HUB // MODULES</div>
-                    <button id="toggle-edit-btn" style="padding: 4px 10px; font-size: 0.8rem; border-color: var(--cyan); color: var(--cyan); background: transparent; width: auto;">EDIT GRID</button>
-                </div>
-                <div class="app-grid" id="dynamic-app-grid"></div>
-            </div>
-        </div>
+    <div class="stat-row">
+      <span class="stat-label">RAM</span>
+      <div class="stat-track"><div class="stat-fill" id="bar-asus-ram"></div></div>
+      <span class="stat-val"  id="val-asus-ram">—</span>
     </div>
+  </div>
 
-    <div class="nav-container" id="nav-dots">
-        <div class="dot active" onclick="scrollToPanel(0)"></div>
-        <div class="dot" onclick="scrollToPanel(1)"></div>
-        <div class="dot" onclick="scrollToPanel(2)"></div>
-        <div class="dot" onclick="scrollToPanel(3)"></div>
+  <div class="node-card" id="card-hp">
+    <div class="node-title">
+      <div class="online-dot" id="dot-hp"></div>
+      HP SERVER
     </div>
+    <div class="stat-row">
+      <span class="stat-label">CPU</span>
+      <div class="stat-track"><div class="stat-fill" id="bar-hp-cpu"></div></div>
+      <span class="stat-val"  id="val-hp-cpu">—</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">RAM</span>
+      <div class="stat-track"><div class="stat-fill" id="bar-hp-ram"></div></div>
+      <span class="stat-val"  id="val-hp-ram">—</span>
+    </div>
+  </div>
 
-    <script>
-        // --- 1. CLOCK & VITALS ---
-        setInterval(() => {
-            const now = new Date();
-            let h = now.getHours() % 12 || 12; 
-            document.getElementById('clock').innerText = `${h}:${now.getMinutes().toString().padStart(2, '0')}`;
-            document.getElementById('date').innerText = now.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }).toUpperCase();
-        }, 1000);
+</div><!-- /#node-strip -->
 
-        let uptimeSeconds = 0;
-        setInterval(() => {
-            uptimeSeconds++;
-            const h = Math.floor(uptimeSeconds / 3600).toString().padStart(2, '0');
-            const m = Math.floor((uptimeSeconds % 3600) / 60).toString().padStart(2, '0');
-            const s = (uptimeSeconds % 60).toString().padStart(2, '0');
-            document.getElementById('uptime').innerText = `${h}:${m}:${s}`;
-        }, 1000);
+<!-- REAL-TIME NETWORK BARS — Netdata feeds these every 2s -->
+<div id="net-strip">
+  <div class="net-title">◈ Live Network Throughput</div>
 
-        // Python Telemetry Fetch
-        async function fetchRealTelemetry() {
-            try {
-                const response = await fetch('http://192.168.137.1:5000/vitals');
-                const data = await response.json();
-                document.getElementById('cpu-load').innerText = data.cpu;
-                document.getElementById('temp-read').innerText = data.temp;
-            } catch (error) {
-                if(uptimeSeconds % 3 === 0) {
-                    document.getElementById('temp-read').innerText = (40 + Math.floor(Math.random() * 8)) + "°C";
-                    document.getElementById('cpu-load').innerText = (5 + Math.floor(Math.random() * 15)) + "%";
-                }
-            }
-        }
-        setInterval(fetchRealTelemetry, 2000);
+  <div class="net-row">
+    <span class="net-label">ASUS · DL</span>
+    <div class="net-track"><div class="net-bar dl" id="nb-asus-dl" style="width:0%"></div></div>
+    <span class="net-val" id="nv-asus-dl">—</span>
+    <div class="net-track"><div class="net-bar ul" id="nb-asus-ul" style="width:0%"></div></div>
+    <span class="net-val" id="nv-asus-ul">— ↑</span>
+  </div>
 
-        let adCount = 14203;
-        setInterval(() => { if(Math.random() > 0.5) adCount += Math.floor(Math.random() * 3); document.getElementById('ad-count').innerText = adCount.toLocaleString(); }, 2000);
+  <div class="net-row">
+    <span class="net-label">HP · DL</span>
+    <div class="net-track"><div class="net-bar dl" id="nb-hp-dl" style="width:0%"></div></div>
+    <span class="net-val" id="nv-hp-dl">—</span>
+    <div class="net-track"><div class="net-bar ul" id="nb-hp-ul" style="width:0%"></div></div>
+    <span class="net-val" id="nv-hp-ul">— ↑</span>
+  </div>
 
-        // --- 2. SCROLL NAVIGATION (4 PANELS) ---
-        const track = document.getElementById('track'); const dots = document.querySelectorAll('.dot');
-        function scrollToPanel(index) { document.getElementById(`panel-${index}`).scrollIntoView({ behavior: 'smooth' }); }
-        track.addEventListener('scroll', () => {
-            let idx = Math.round(track.scrollLeft / window.innerWidth);
-            dots.forEach(d => d.classList.remove('active')); if(dots[idx]) dots[idx].classList.add('active');
-        });
+</div><!-- /#net-strip -->
+```
 
-        // --- 3. FOCUS PROTOCOL (POMODORO) ---
-        let timerInterval; let timeLeft = 25 * 60;
-        const timerDisplay = document.getElementById('timer-val');
-        function updateTimer() {
-            const m = Math.floor(timeLeft / 60).toString().padStart(2, '0');
-            const s = (timeLeft % 60).toString().padStart(2, '0');
-            timerDisplay.innerText = `${m}:${s}`;
-        }
-        function startTimer() {
-            clearInterval(timerInterval);
-            timerInterval = setInterval(() => {
-                if (timeLeft > 0) { timeLeft--; updateTimer(); } 
-                else { clearInterval(timerInterval); alert("Sprint Complete."); }
-            }, 1000);
-        }
-        function resetTimer() { clearInterval(timerInterval); timeLeft = 25 * 60; updateTimer(); }
+  </div><!-- /#page-clock -->
 
-        // --- 4. BRAIN DUMP (MEMORY BUFFER) ---
-        const taskInput = document.getElementById('task-input');
-        const tasksList = document.getElementById('tasks-list');
-        let savedTasks = JSON.parse(localStorage.getItem('neverTasks')) || [];
+  <!-- ===================================================
+       PAGE 1: HOMEPAGE IFRAME
+       Change the src URL if your Homepage port changes.
+       =================================================== -->
 
-        function renderTasks() {
-            tasksList.innerHTML = '';
-            savedTasks.forEach((task, index) => {
-                const li = document.createElement('li');
-                li.innerHTML = `<span style="color:var(--cyan);">></span> <span>${task}</span> <span class="del-btn" onclick="deleteTask(${index})">X</span>`;
-                tasksList.prepend(li);
-            });
-        }
-        taskInput.addEventListener('keypress', function (e) {
-            if (e.key === 'Enter' && this.value.trim() !== '') {
-                savedTasks.push(this.value.trim());
-                localStorage.setItem('neverTasks', JSON.stringify(savedTasks));
-                this.value = ''; renderTasks();
-            }
-        });
-        window.deleteTask = function(index) { savedTasks.splice(index, 1); localStorage.setItem('neverTasks', JSON.stringify(savedTasks)); renderTasks(); };
-        renderTasks();
+  <div class="page" id="page-widgets">
 
-        // --- 5. NETWORK DIAGNOSTICS (UPGRADED) ---
-        function kickDevice(btn) {
-            const li = btn.parentElement; li.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
-            setTimeout(() => { li.style.opacity = '0'; li.style.transform = 'translateX(50px)'; }, 200);
-            setTimeout(() => li.remove(), 500);
-        }
+```
+<div id="widget-header">
+  <span>◈ NEVER CENTER · WIDGET GRID ◈</span>
+</div>
 
-        async function runSpeedTest() {
-            const btn = document.getElementById('test-btn');
-            const mainVal = document.getElementById('speed-val');
-            const mainLabel = document.getElementById('speed-label');
-            const fill = document.getElementById('gauge-fill');
-            const resDl = document.getElementById('res-dl');
-            const resUl = document.getElementById('res-ul');
-            const resPing = document.getElementById('res-ping');
-            
-            if(btn.disabled) return;
-            btn.disabled = true;
-            btn.innerText = "TESTING DL...";
-            mainLabel.innerText = "// TESTING DOWNLOAD";
-            resDl.innerText = "--"; resUl.innerText = "--"; resPing.innerText = "--";
-            fill.style.strokeDashoffset = 440;
+<!-- Homepage runs on the ASUS TUF at this Tailscale IP.
+     The iframe shows the full Homepage interface inside
+     our page 1. Scrolling inside the iframe works normally. -->
+<iframe
+  id="homepage-frame"
+  src="http://100.103.55.109:3000"
+  title="Homepage Dashboard"
+  loading="lazy"
+  sandbox="allow-scripts allow-same-origin allow-forms allow-popups">
+</iframe>
+```
 
-            // Step 1: Download Test
-            let cur = 0; let targetDl = 180 + Math.random() * 50;
-            let intDl = setInterval(() => {
-                cur += (targetDl - cur) * 0.1 + (Math.random() * 2);
-                mainVal.innerText = cur.toFixed(1);
-                fill.style.strokeDashoffset = 440 - (440 * Math.min(cur/300, 1));
-                
-                if(cur >= targetDl - 0.5) {
-                    clearInterval(intDl);
-                    resDl.innerText = cur.toFixed(1);
-                    
-                    // Step 2: Upload Test
-                    btn.innerText = "TESTING UL...";
-                    mainLabel.innerText = "// TESTING UPLOAD";
-                    cur = 0; let targetUl = 60 + Math.random() * 30;
-                    
-                    let intUl = setInterval(() => {
-                        cur += (targetUl - cur) * 0.1 + (Math.random() * 2);
-                        mainVal.innerText = cur.toFixed(1);
-                        fill.style.strokeDashoffset = 440 - (440 * Math.min(cur/300, 1));
-                        
-                        if(cur >= targetUl - 0.5) {
-                            clearInterval(intUl);
-                            resUl.innerText = cur.toFixed(1);
-                            
-                            // Step 3: Ping Check
-                            resPing.innerText = (12 + Math.floor(Math.random()*15)) + " ms";
-                            
-                            // Finish
-                            btn.innerText = "COMPLETE";
-                            mainLabel.innerText = "// SPEED.TEST";
-                            setTimeout(() => {
-                                btn.innerText = "START DIAGNOSTIC";
-                                mainVal.innerText = "0.0";
-                                fill.style.strokeDashoffset = 440;
-                                btn.disabled = false;
-                            }, 2500);
-                        }
-                    }, 50);
-                }
-            }, 50);
-        }
+  </div><!-- /#page-widgets -->
 
-        // --- 6. APP GRID & EDIT MODE ---
-        const defaultApps = [
-            { id: 0, icon: "🎓", label: "KIIT PORTAL", url: "https://kiit.ac.in" },
-            { id: 1, icon: "🎵", label: "SPOTIFY", url: "https://open.spotify.com" },
-            { id: 2, icon: "🎬", label: "JELLYFIN", url: "" },
-            { id: 3, icon: "💪", label: "GYM TRACK", url: "" },
-            { id: 4, icon: "🎮", label: "WARZONE", url: "" },
-            { id: 5, icon: "⚙️", label: "ROUTER", url: "" },
-            { id: 6, icon: "🛡️", label: "ADGUARD", url: "" },
-            { id: 7, icon: "📝", label: "NOTES", url: "" }
-        ];
+  <!-- ===================================================
+       PAGE 2: CUSTOM LIVE PANELS
+       =================================================== -->
 
-        let apps = JSON.parse(localStorage.getItem('neverCenterApps')) || defaultApps;
-        let isEditMode = false;
-        const gridContainer = document.getElementById('dynamic-app-grid');
+  <div class="page" id="page-panels">
 
-        function renderAppGrid() {
-            gridContainer.innerHTML = '';
-            apps.forEach(app => {
-                const tile = document.createElement('div'); tile.className = 'app-tile';
-                tile.innerHTML = `<div class="app-icon">${app.icon}</div><div class="app-label">${app.label}</div>`;
-                tile.onclick = () => isEditMode ? openModal(app) : (app.url ? window.open(app.url, '_blank') : null);
-                gridContainer.appendChild(tile);
-            });
-        }
+```
+<div class="panel-header">◈ System Intelligence · Live Telemetry ◈</div>
 
-        document.getElementById('toggle-edit-btn').onclick = function() {
-            isEditMode = !isEditMode;
-            this.innerText = isEditMode ? "DONE EDITING" : "EDIT GRID";
-            this.style.background = isEditMode ? "var(--cyan)" : "transparent";
-            this.style.color = isEditMode ? "#000" : "var(--cyan)";
-            gridContainer.classList.toggle('edit-mode-active', isEditMode);
-        };
+<!-- ROW: Speed Gauges + RAM Orbs -->
+<div class="panel-row">
 
-        const modal = document.getElementById('edit-modal');
-        function openModal(app) {
-            document.getElementById('edit-id').value = app.id;
-            document.getElementById('edit-icon').value = app.icon;
-            document.getElementById('edit-label').value = app.label;
-            document.getElementById('edit-url').value = app.url;
-            modal.style.display = 'flex';
-        }
-        function closeModal() { modal.style.display = 'none'; }
-        function saveAppConfig() {
-            const id = parseInt(document.getElementById('edit-id').value);
-            const index = apps.findIndex(a => a.id === id);
-            apps[index].icon = document.getElementById('edit-icon').value || "📦";
-            apps[index].label = document.getElementById('edit-label').value.toUpperCase();
-            apps[index].url = document.getElementById('edit-url').value;
-            localStorage.setItem('neverCenterApps', JSON.stringify(apps));
-            renderAppGrid(); closeModal();
-        }
-        renderAppGrid();
+  <div class="panel">
+    <div class="panel-title">◈ Net I/O Gauges</div>
+    <div id="gauge-container">
+      <!-- Gauge SVGs are injected by JS via makeGauge() -->
+    </div>
+  </div>
 
-        // --- 7. AUDIO ENGINE ---
-        const audio = new Audio('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'); 
-        audio.crossOrigin = "anonymous";
-        let audioCtx, analyser, source;
+  <div class="panel">
+    <div class="panel-title">◈ Memory Pressure</div>
+    <div id="orb-container">
+      <!-- Orbs injected by JS -->
+    </div>
+  </div>
 
-        document.getElementById('audio-btn').addEventListener('click', async function() {
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                analyser = audioCtx.createAnalyser();
-                source = audioCtx.createMediaElementSource(audio);
-                source.connect(analyser); analyser.connect(audioCtx.destination);
-                analyser.fftSize = 256;
-            }
+</div>
 
-            if (audio.paused) {
-                audio.play();
-                this.style.display = 'none';
-                const data = new Uint8Array(analyser.frequencyBinCount);
-                function animate() {
-                    requestAnimationFrame(animate); analyser.getByteFrequencyData(data);
-                    let avg = data.reduce((a,b) => a+b) / data.length;
-                    document.getElementById('ring').style.transform = `scale(${1 + (avg/180)})`;
-                    document.getElementById('ring').style.boxShadow = `inset 0 0 20px rgba(236,72,153,0.1), 0 0 ${20 + avg}px rgba(6,182,212,0.3)`;
-                }
-                animate();
-            }
-        });
-    </script>
+<!-- ROW: Disk I/O + Process Spotlight -->
+<div class="panel-row">
+
+  <div class="panel">
+    <div class="panel-title">◈ Disk I/O Throughput</div>
+    <div id="disk-container">
+      <div class="disk-row" id="dr-asus-read">
+        <span class="disk-label">ASUS Read</span>
+        <div class="disk-track"><div class="disk-fill read" style="width:0%"></div></div>
+        <span class="disk-val">—</span>
+      </div>
+      <div class="disk-row" id="dr-asus-write">
+        <span class="disk-label">ASUS Write</span>
+        <div class="disk-track"><div class="disk-fill write" style="width:0%"></div></div>
+        <span class="disk-val">—</span>
+      </div>
+      <div class="divider"></div>
+      <div class="disk-row" id="dr-hp-read">
+        <span class="disk-label">HP Read</span>
+        <div class="disk-track"><div class="disk-fill read" style="width:0%"></div></div>
+        <span class="disk-val">—</span>
+      </div>
+      <div class="disk-row" id="dr-hp-write">
+        <span class="disk-label">HP Write</span>
+        <div class="disk-track"><div class="disk-fill write" style="width:0%"></div></div>
+        <span class="disk-val">—</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">◈ Process Spotlight</div>
+    <div id="process-container">
+      <div class="proc-card" id="proc-asus">
+        <div class="proc-node">ASUS TUF</div>
+        <div class="proc-name">Scanning…</div>
+        <div class="proc-pct">—</div>
+        <div class="proc-meta">CPU hog</div>
+      </div>
+      <div class="proc-card" id="proc-hp">
+        <div class="proc-node">HP SERVER</div>
+        <div class="proc-name">Scanning…</div>
+        <div class="proc-pct">—</div>
+        <div class="proc-meta">CPU hog</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ROW: Ping Sparklines + Tailscale Peers -->
+<div class="panel-row">
+
+  <div class="panel">
+    <div class="panel-title">◈ Ping Latency Graph</div>
+    <div id="ping-container">
+      <div class="ping-row wan">
+        <span class="ping-label">WAN 1.1.1.1</span>
+        <div class="spark-wrap">
+          <svg viewBox="0 0 200 26" preserveAspectRatio="none">
+            <path class="spark-area" id="spa-wan" d=""/>
+            <path class="spark-line" id="spl-wan" d=""/>
+            <circle class="spark-dot" id="spd-wan" r="3" cx="200" cy="13"/>
+          </svg>
+        </div>
+        <span class="ping-val good" id="pv-wan">—</span>
+      </div>
+      <div class="ping-row ts">
+        <span class="ping-label">TS ASUS</span>
+        <div class="spark-wrap">
+          <svg viewBox="0 0 200 26" preserveAspectRatio="none">
+            <path class="spark-area" id="spa-ts" d=""/>
+            <path class="spark-line" id="spl-ts" d=""/>
+            <circle class="spark-dot" id="spd-ts" r="3" cx="200" cy="13"/>
+          </svg>
+        </div>
+        <span class="ping-val good" id="pv-ts">—</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">◈ Tailscale Peers</div>
+    <div id="peer-grid">
+      <span style="font-size:0.6rem;color:rgba(200,240,230,0.3);font-family:var(--font-mono)">Polling…</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- ROW: AdGuard Ticker + Uptime Badges -->
+<div class="panel-row">
+
+  <div class="panel">
+    <div class="panel-title">◈ DNS Block Feed</div>
+    <div id="ticker-wrap">
+      <div id="ticker-tape">
+        <span class="t-item"><span class="t-sep">◆</span><span class="t-allow">Connecting to AdGuard…</span></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">◈ Uptime Achievements</div>
+    <div id="badge-container">
+      <span style="font-size:0.6rem;color:rgba(200,240,230,0.3);font-family:var(--font-mono)">Checking…</span>
+    </div>
+  </div>
+
+</div>
+```
+
+  </div><!-- /#page-panels -->
+
+</div><!-- /#swipe-track -->
+
+<!-- Page indicator dots -->
+
+<div id="dots">
+  <div class="dot active" onclick="goTo(0)"></div>
+  <div class="dot"        onclick="goTo(1)"></div>
+  <div class="dot"        onclick="goTo(2)"></div>
+</div>
+
+<!-- Right-edge swipe hint -->
+
+<div id="swipe-hint"></div>
+
+<script>
+// ============================================================
+// NEVER CENTER — JavaScript Engine
+//
+// This runs in a standalone HTML file, completely outside of
+// Homepage's React environment. Zero race conditions.
+// The script starts immediately — no waiting for React, no
+// MutationObserver hacks, no retries needed.
+// ============================================================
+
+'use strict';
+
+// ── CONFIG ────────────────────────────────────────────────────
+const C = {
+  ASUS: 'http://100.103.55.109',   // ASUS TUF Tailscale IP
+  HP:   'http://100.117.103.99',   // HP EliteBook Tailscale IP
+
+  // AdGuard Home credentials — encoded as HTTP Basic Auth
+  AG_AUTH: 'Basic ' + btoa('adarsh03:iamlucky@03'),
+  AG_PORT: 80,
+
+  // How often each section polls for new data (milliseconds)
+  T: {
+    CLOCK:     1000,   // clock ticks every second
+    NODES:     3000,   // CPU/RAM stat cards
+    NET:       2000,   // network throughput bars
+    ORB:       4000,   // RAM/swap pressure orbs
+    DISK:      3000,   // disk I/O bars
+    GAUGE:     2500,   // network speed gauges
+    PROC:      5000,   // process spotlight
+    PING:      3000,   // ping sparklines
+    AG:       10000,   // AdGuard DNS ticker
+    TS:       15000,   // Tailscale peer grid
+    BADGES:   30000,   // uptime badges
+  },
+
+  PING_LEN: 40,            // how many ping samples to keep
+  MAX_BW:   100,           // max expected bandwidth in Mbps
+};
+
+// ── STATE ─────────────────────────────────────────────────────
+let page       = 0;         // current page index (0, 1, 2)
+let txX = 0, txY = 0;      // touch start coordinates
+const pH       = { wan: [], ts: [] };  // ping history arrays
+const dMax     = { r: 1, w: 1 };      // disk I/O session max
+const nMax     = { d: 1, u: 1 };      // network session max
+
+// ── BOOT ──────────────────────────────────────────────────────
+// Because this is plain HTML (no React), everything runs
+// immediately on DOMContentLoaded — no waiting needed.
+document.addEventListener('DOMContentLoaded', () => {
+  buildGauges();     // inject SVG gauge elements into DOM
+  buildOrbs();       // inject orb elements into DOM
+  startAllLoops();   // kick off all data polling intervals
+  initSwipe();       // wire up touch and keyboard gestures
+});
+
+// ============================================================
+// SWIPE ENGINE
+// ============================================================
+
+function initSwipe() {
+  const track = document.getElementById('swipe-track');
+
+  // Record where the finger first touched
+  document.addEventListener('touchstart', e => {
+    txX = e.changedTouches[0].clientX;
+    txY = e.changedTouches[0].clientY;
+  }, { passive: true });
+
+  // On release, calculate direction and distance
+  document.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - txX;
+    const dy = e.changedTouches[0].clientY - txY;
+    // Only trigger if horizontal movement > 50px AND dominates vertical
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+      dx < 0 ? goTo(page + 1) : goTo(page - 1);
+    }
+  }, { passive: true });
+
+  // Arrow keys for desktop testing
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight') goTo(page + 1);
+    if (e.key === 'ArrowLeft')  goTo(page - 1);
+  });
+}
+
+function goTo(n) {
+  page = Math.max(0, Math.min(2, n));
+  document.getElementById('swipe-track').style.transform =
+    `translateX(-${page * 100}vw)`;
+
+  // Update dots
+  document.querySelectorAll('.dot').forEach((d, i) =>
+    d.classList.toggle('active', i === page)
+  );
+
+  // Hide swipe hint after first navigation away from page 0
+  if (page > 0) {
+    const h = document.getElementById('swipe-hint');
+    if (h) h.style.opacity = '0';
+  }
+}
+
+// ============================================================
+// ALL DATA LOOPS
+// ============================================================
+
+function startAllLoops() {
+  loopClock();
+  loopNodes();
+  loopNet();
+  loopOrbs();
+  loopDisk();
+  loopGauges();
+  loopProcess();
+  loopPing();
+  loopAdGuard();
+  loopPeers();
+  loopBadges();
+}
+
+// ── CLOCK ─────────────────────────────────────────────────────
+
+function loopClock() {
+  tickClock();
+  setInterval(tickClock, C.T.CLOCK);
+}
+
+function tickClock() {
+  const now  = new Date();
+  const h    = now.getHours();
+  const m    = String(now.getMinutes()).padStart(2, '0');
+  const h12  = h % 12 || 12;
+  const ampm = h >= 12 ? 'PM' : 'AM';
+
+  setText('clock',    `${h12}:${m}`);
+  setText('ampm',     ampm);
+  setText('date-line', now.toLocaleDateString('en-US', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+  }));
+}
+
+// ── NODE STATS (CPU + RAM bars on clock page) ─────────────────
+
+function loopNodes() {
+  fetchNodes();
+  setInterval(fetchNodes, C.T.NODES);
+}
+
+async function fetchNodes() {
+  await Promise.allSettled([
+    fetchNodeData('asus', `${C.ASUS}:61208`),
+    fetchNodeData('hp',   `${C.HP}:61208`),
+  ]);
+}
+
+async function fetchNodeData(prefix, base) {
+  // Fetch CPU and memory simultaneously from Glances
+  const [cr, mr] = await Promise.all([
+    sf(`${base}/api/3/cpu`, 3500),
+    sf(`${base}/api/3/mem`, 3500),
+  ]);
+
+  // Update online status dot
+  const dot = id(`dot-${prefix}`);
+  if (dot) dot.classList.toggle('offline', !cr);
+
+  if (cr) {
+    try {
+      const d = await cr.json();
+      // Glances returns cpu.total as the overall CPU percentage
+      setBar(prefix + '-cpu', d.total ?? d.cpu_percent ?? 0);
+    } catch(_) {}
+  }
+
+  if (mr) {
+    try {
+      const d = await mr.json();
+      setBar(prefix + '-ram', d.percent ?? 0);
+    } catch(_) {}
+  }
+}
+
+// Sets a stat bar's width and color based on percentage
+function setBar(statId, pct) {
+  const bar = id(`bar-${statId}`);
+  const val = id(`val-${statId}`);
+  if (!bar || !val) return;
+
+  bar.style.width = `${pct}%`;
+  // Color ramp: cyan (healthy) → amber (moderate) → red (critical)
+  if (pct < 50) {
+    bar.style.background = 'var(--neon-cyan)';
+    bar.style.boxShadow  = '0 0 5px var(--neon-cyan)';
+  } else if (pct < 80) {
+    bar.style.background = 'var(--neon-amber)';
+    bar.style.boxShadow  = '0 0 5px var(--neon-amber)';
+  } else {
+    bar.style.background = 'var(--neon-red)';
+    bar.style.boxShadow  = '0 0 5px var(--neon-red)';
+  }
+  val.textContent = `${Math.round(pct)}%`;
+}
+
+// ── REAL-TIME NETWORK BARS (clock page) ───────────────────────
+// These bars show live download/upload throughput for both nodes.
+// Netdata's REST API returns kilobits/sec which we convert to Mbps.
+// The bar width is normalized against the session maximum so even
+// small traffic is visible as a non-zero bar.
+
+function loopNet() {
+  fetchNet();
+  setInterval(fetchNet, C.T.NET);
+}
+
+async function fetchNet() {
+  await Promise.allSettled([
+    fetchNetNode('asus', `${C.ASUS}:19999`),
+    fetchNetNode('hp',   `${C.HP}:19999`),
+  ]);
+}
+
+async function fetchNetNode(prefix, base) {
+  // Try chart names in order — Docker Netdata on Windows uses
+  // different adapter names depending on container config
+  let data = null;
+  for (const chart of ['system.net','net.eth0','net.ens3','net.Ethernet','net.Wi-Fi']) {
+    data = await fetchNetdataChart(base, chart);
+    if (data) break;
+  }
+  if (!data) return;
+
+  const row    = data.data[0];
+  const dlMbps = Math.abs(row[1] ?? 0) / 1000; // kbps → Mbps
+  const ulMbps = Math.abs(row[2] ?? 0) / 1000;
+
+  // Update session max for bar normalization
+  nMax.d = Math.max(nMax.d, dlMbps || 1);
+  nMax.u = Math.max(nMax.u, ulMbps || 1);
+
+  const dlPct = Math.min(100, (dlMbps / nMax.d) * 100);
+  const ulPct = Math.min(100, (ulMbps / nMax.u) * 100);
+
+  setNetBar(prefix, 'dl', dlPct, fmtMbps(dlMbps));
+  setNetBar(prefix, 'ul', ulPct, fmtMbps(ulMbps) + ' ↑');
+}
+
+function setNetBar(prefix, dir, pct, label) {
+  const bar = id(`nb-${prefix}-${dir}`);
+  const val = id(`nv-${prefix}-${dir}`);
+  if (bar) bar.style.width = `${pct}%`;
+  if (val) val.textContent = label;
+}
+
+// ── RAM/SWAP PRESSURE ORBS ────────────────────────────────────
+
+function buildOrbs() {
+  const c = id('orb-container');
+  if (!c) return;
+  c.innerHTML = [
+    makeOrbHTML('asus-ram',  'RAM',  'ASUS'),
+    makeOrbHTML('asus-swap', 'SWAP', 'ASUS'),
+    makeOrbHTML('hp-ram',    'RAM',  'HP'),
+    makeOrbHTML('hp-swap',   'SWAP', 'HP'),
+  ].join('');
+}
+
+function makeOrbHTML(orbId, label, node) {
+  return `
+    <div class="orb-wrap">
+      <div class="orb" id="orb-${orbId}"
+        style="width:34px;height:34px;
+               background:rgba(0,255,200,0.18);
+               box-shadow:0 0 12px rgba(0,255,200,0.28);">
+      </div>
+      <div class="orb-val" id="ov-${orbId}">—%</div>
+      <div class="orb-label">${label}·${node}</div>
+    </div>`;
+}
+
+function loopOrbs() {
+  fetchOrbs();
+  setInterval(fetchOrbs, C.T.ORB);
+}
+
+async function fetchOrbs() {
+  await Promise.allSettled([
+    fetchOrbNode('asus-ram','asus-swap', `${C.ASUS}:61208`),
+    fetchOrbNode('hp-ram',  'hp-swap',   `${C.HP}:61208`),
+  ]);
+}
+
+async function fetchOrbNode(rId, sId, base) {
+  const r = await sf(`${base}/api/3/mem`, 4000);
+  if (!r) return;
+  try {
+    const d = await r.json();
+    applyOrb(rId, d.percent                        ?? 0);
+    applyOrb(sId, d.swap_percent ?? d.swap?.percent ?? 0);
+  } catch(_) {}
+}
+
+function applyOrb(orbId, pct) {
+  const orb = id(`orb-${orbId}`);
+  const val = id(`ov-${orbId}`);
+  if (!orb || !val) return;
+
+  // Size grows from 20px at 0% usage to 68px at 100%
+  const size = 20 + (pct / 100) * 48;
+  let bg, shadow;
+
+  if (pct < 50) {
+    bg     = `rgba(0,255,200,${0.15 + pct/100*0.25})`;
+    shadow = `0 0 ${10 + pct/2}px rgba(0,255,200,${0.28 + pct/100*0.4})`;
+  } else if (pct < 80) {
+    const t = (pct-50)/30;
+    bg     = `rgba(255,170,0,${0.2 + t*0.2})`;
+    shadow = `0 0 ${18+t*10}px rgba(255,170,0,${0.4+t*0.3})`;
+  } else {
+    const t = (pct-80)/20;
+    bg     = `rgba(255,0,60,${0.25+t*0.25})`;
+    shadow = `0 0 ${24+t*12}px rgba(255,0,60,${0.5+t*0.4})`;
+  }
+
+  orb.style.width = orb.style.height = `${size}px`;
+  orb.style.background = bg;
+  orb.style.boxShadow  = shadow;
+  val.textContent = `${Math.round(pct)}%`;
+}
+
+// ── DISK I/O ──────────────────────────────────────────────────
+
+function loopDisk() {
+  fetchDisk();
+  setInterval(fetchDisk, C.T.DISK);
+}
+
+async function fetchDisk() {
+  await Promise.allSettled([
+    fetchDiskNode('asus', `${C.ASUS}:61208`),
+    fetchDiskNode('hp',   `${C.HP}:61208`),
+  ]);
+}
+
+async function fetchDiskNode(prefix, base) {
+  const r = await sf(`${base}/api/3/diskio`, 4000);
+  if (!r) return;
+  try {
+    const disks = await r.json();
+    let rBytes=0, wBytes=0;
+    disks.forEach(d => {
+      if (!d.disk_name || d.disk_name.startsWith('loop')) return;
+      rBytes += d.read_bytes  ?? 0;
+      wBytes += d.write_bytes ?? 0;
+    });
+    const rMB = rBytes/1048576, wMB = wBytes/1048576;
+    dMax.r = Math.max(dMax.r, rMB||1);
+    dMax.w = Math.max(dMax.w, wMB||1);
+    setDiskRow(`dr-${prefix}-read`,  (rMB/dMax.r)*100, fmtBytes(rMB));
+    setDiskRow(`dr-${prefix}-write`, (wMB/dMax.w)*100, fmtBytes(wMB));
+  } catch(_) {}
+}
+
+function setDiskRow(rowId, pct, label) {
+  const row = id(rowId);
+  if (!row) return;
+  const fill = row.querySelector('.disk-fill');
+  const val  = row.querySelector('.disk-val');
+  if (fill) fill.style.width = `${Math.min(100,pct)}%`;
+  if (val)  val.textContent  = label;
+}
+
+// ── NETWORK SPEED GAUGES (page 2) ─────────────────────────────
+
+function buildGauges() {
+  const c = id('gauge-container');
+  if (!c) return;
+  c.innerHTML = [
+    makeGaugeHTML('asus-dl','DL','ASUS','dl'),
+    makeGaugeHTML('asus-ul','UL','ASUS','ul'),
+    makeGaugeHTML('hp-dl',  'DL','HP',  'dl'),
+    makeGaugeHTML('hp-ul',  'UL','HP',  'ul'),
+  ].join('');
+}
+
+function makeGaugeHTML(gId, dir, node, cls) {
+  // SVG semicircle arc that fills like a speedometer.
+  // The arc goes from 215° to 325° (110° sweep).
+  // stroke-dashoffset is animated by setGauge() to show speed.
+  const R=42, CX=55, CY=55;
+  const toXY = a => ({
+    x: CX + R * Math.cos((a-90)*Math.PI/180),
+    y: CY + R * Math.sin((a-90)*Math.PI/180),
+  });
+  const s = toXY(215), e = toXY(325);
+  const arcLen = (110/360)*2*Math.PI*R;
+  return `
+    <div class="gauge-wrap">
+      <div style="width:106px;height:68px;">
+        <svg viewBox="0 0 110 70" overflow="visible" width="106" height="68">
+          <path d="M${s.x} ${s.y} A${R} ${R} 0 0 1 ${e.x} ${e.y}"
+            stroke="rgba(255,255,255,0.05)" stroke-width="9" fill="none" stroke-linecap="round"/>
+          <path class="gauge-fill ${cls}" id="g-${gId}"
+            d="M${s.x} ${s.y} A${R} ${R} 0 0 1 ${e.x} ${e.y}"
+            stroke-dasharray="${arcLen}" stroke-dashoffset="${arcLen}"
+            stroke-width="9" fill="none" stroke-linecap="round"
+            data-al="${arcLen}"/>
+          <text x="55" y="46" text-anchor="middle"
+            font-family="Rajdhani,sans-serif" font-weight="700"
+            font-size="13" fill="#e8f4f0" id="gs-${gId}">0</text>
+          <text x="55" y="57" text-anchor="middle"
+            font-family="Share Tech Mono,monospace" font-size="5.5"
+            fill="rgba(200,240,230,0.38)">Mbps</text>
+        </svg>
+      </div>
+      <div class="gauge-label">${dir}·${node}</div>
+    </div>`;
+}
+
+function loopGauges() {
+  fetchGauges();
+  setInterval(fetchGauges, C.T.GAUGE);
+}
+
+async function fetchGauges() {
+  await Promise.allSettled([
+    fetchGaugeNode('asus', `${C.ASUS}:19999`),
+    fetchGaugeNode('hp',   `${C.HP}:19999`),
+  ]);
+}
+
+async function fetchGaugeNode(prefix, base) {
+  let data=null;
+  for (const chart of ['system.net','net.eth0','net.ens3','net.Ethernet']) {
+    data = await fetchNetdataChart(base, chart);
+    if (data) break;
+  }
+  if (!data) return;
+  const row = data.data[0];
+  setGauge(`${prefix}-dl`, Math.abs(row[1]??0)/1000);
+  setGauge(`${prefix}-ul`, Math.abs(row[2]??0)/1000);
+}
+
+function setGauge(gId, mbps) {
+  const arc = id(`g-${gId}`);
+  const spd = id(`gs-${gId}`);
+  if (!arc||!spd) return;
+  const al = parseFloat(arc.getAttribute('data-al')||'0');
+  if (!al) return;
+  const ratio = Math.min(mbps/C.MAX_BW, 1);
+  arc.style.strokeDashoffset = al - ratio*al;
+  arc.style.stroke = ratio<0.5 ? 'var(--neon-cyan)' : ratio<0.8 ? 'var(--neon-amber)' : 'var(--neon-red)';
+  spd.textContent = mbps<10 ? mbps.toFixed(1) : Math.round(mbps).toString();
+}
+
+// ── PROCESS SPOTLIGHT ─────────────────────────────────────────
+
+function loopProcess() {
+  fetchProcess();
+  setInterval(fetchProcess, C.T.PROC);
+}
+
+async function fetchProcess() {
+  await Promise.allSettled([
+    fetchProcNode('asus', `${C.ASUS}:61208`),
+    fetchProcNode('hp',   `${C.HP}:61208`),
+  ]);
+}
+
+async function fetchProcNode(prefix, base) {
+  const r = await sf(`${base}/api/3/processlist`, 5000);
+  if (!r) return;
+  try {
+    const procs = await r.json();
+    if (!Array.isArray(procs)||!procs.length) return;
+    const top = procs.filter(p=>(p.cpu_percent??0)>0).sort((a,b)=>b.cpu_percent-a.cpu_percent)[0];
+    if (!top) return;
+    const card = id(`proc-${prefix}`);
+    if (!card) return;
+    card.querySelector('.proc-name').textContent = String(top.name??'unknown').substring(0,20);
+    card.querySelector('.proc-pct').textContent  = `${(top.cpu_percent??0).toFixed(1)}%`;
+    card.querySelector('.proc-meta').textContent = `PID ${top.pid??'?'} · ${fmtBytes((top.memory_info?.rss??0)/1048576)} RSS`;
+  } catch(_) {}
+}
+
+// ── PING SPARKLINES ───────────────────────────────────────────
+
+function loopPing() {
+  fetchPing();
+  setInterval(fetchPing, C.T.PING);
+}
+
+async function fetchPing() {
+  const [wanMs, tsMs] = await Promise.all([
+    measureRTT('https://1.1.1.1', 3000),
+    measureRTT(`${C.ASUS}:61208/api/3/cpu`, 3000),
+  ]);
+  pH.wan.push(wanMs); if (pH.wan.length > C.PING_LEN) pH.wan.shift();
+  pH.ts.push(tsMs);  if (pH.ts.length  > C.PING_LEN) pH.ts.shift();
+  drawSpark('wan', pH.wan);
+  drawSpark('ts',  pH.ts);
+  setPingVal('pv-wan', wanMs);
+  setPingVal('pv-ts',  tsMs);
+}
+
+async function measureRTT(url, ms) {
+  const t0 = performance.now();
+  try {
+    await fetch(url, { mode:'no-cors', cache:'no-store', signal: abort(ms) });
+    return Math.round(performance.now()-t0);
+  } catch(_) { return null; }
+}
+
+function drawSpark(key, hist) {
+  const W=200, H=26;
+  const valid = hist.filter(v=>v!==null);
+  if (valid.length<2) return;
+  const mx = Math.max(...valid, 200);
+  const pts = hist.map((v,i)=>({
+    x: (i/(C.PING_LEN-1))*W,
+    y: v===null ? H/2 : H-((v/mx)*(H-4))-2,
+  }));
+  const line = pts.map((p,i)=>`${i===0?'M':'L'} ${p.x} ${p.y}`).join(' ');
+  const area = `M ${pts[0].x} ${H} `+pts.map(p=>`L ${p.x} ${p.y}`).join(' ')+` L ${pts[pts.length-1].x} ${H} Z`;
+  setAttr(`spl-${key}`,'d',line);
+  setAttr(`spa-${key}`,'d',area);
+  setAttr(`spd-${key}`,'cx',pts[pts.length-1].x);
+  setAttr(`spd-${key}`,'cy',pts[pts.length-1].y);
+}
+
+function setPingVal(elId, ms) {
+  const el = id(elId);
+  if (!el) return;
+  if (ms===null) { el.textContent='TO'; el.className='ping-val bad'; return; }
+  el.textContent=`${ms}ms`;
+  el.className=`ping-val ${ms<50?'good':ms<150?'ok':'bad'}`;
+}
+
+// ── ADGUARD DNS TICKER ────────────────────────────────────────
+
+function loopAdGuard() {
+  fetchAdGuard();
+  setInterval(fetchAdGuard, C.T.AG);
+}
+
+async function fetchAdGuard() {
+  const r = await sf(
+    `${C.HP}:${C.AG_PORT}/control/querylog?limit=40`,
+    5000,
+    { 'Authorization': C.AG_AUTH }
+  );
+  if (!r||!r.ok) {
+    setTicker(`AdGuard ${r?r.status:'offline'} — port ${C.AG_PORT}`);
+    return;
+  }
+  try {
+    const d = await r.json();
+    if (!d.data?.length) { setTicker('AdGuard: No queries yet'); return; }
+    renderTicker(d.data.map(q=>({
+      domain: (q.question?.name??'?').replace(/\.$/,''),
+      blocked: q.reason && q.reason!=='NotFilteredNotFound',
+    })));
+  } catch(_) { setTicker('AdGuard: Parse error'); }
+}
+
+function setTicker(msg) {
+  const t = id('ticker-tape');
+  if (t) t.innerHTML = `<span class="t-item"><span class="t-allow">${msg}</span></span>`;
+}
+
+function renderTicker(items) {
+  const t = id('ticker-tape');
+  if (!t) return;
+  // Double the array so the scroll CSS animation loops seamlessly
+  t.innerHTML = [...items,...items].map(it=>
+    `<span class="t-item">
+      <span class="t-sep">◆</span>
+      <span class="${it.blocked?'t-block':'t-allow'}">${it.blocked?'✕':'·'} ${esc(it.domain)}</span>
+    </span>`
+  ).join('');
+  t.style.animation='none'; void t.offsetWidth; t.style.animation='';
+}
+
+// ── TAILSCALE PEERS ───────────────────────────────────────────
+
+const PEERS = [
+  { name:'ASUS TUF',  ip:'100.103.55.109', port:61208 },
+  { name:'HP SERVER', ip:'100.117.103.99',  port:61208 },
+];
+
+function loopPeers() {
+  fetchPeers();
+  setInterval(fetchPeers, C.T.TS);
+}
+
+async function fetchPeers() {
+  const results = await Promise.all(PEERS.map(async peer => {
+    const t0 = performance.now();
+    try {
+      const r = await fetch(`http://${peer.ip}:${peer.port}/api/3/cpu`, { signal: abort(3500) });
+      return { peer, online:r.ok, ms:Math.round(performance.now()-t0) };
+    } catch(_) { return { peer, online:false, ms:null }; }
+  }));
+  const g = id('peer-grid');
+  if (!g) return;
+  g.innerHTML = results.map(({peer,online,ms})=>`
+    <div class="peer ${online?'online':'offline'}">
+      <div class="peer-name">${peer.name}</div>
+      <div class="peer-ip">${peer.ip}</div>
+      <div class="peer-status">
+        <div class="peer-hb"></div>
+        <span>${online?(ms?`${ms}ms`:'ALIVE'):'OFFLINE'}</span>
+      </div>
+    </div>`).join('');
+}
+
+// ── UPTIME BADGES ─────────────────────────────────────────────
+
+function loopBadges() {
+  fetchBadges();
+  setInterval(fetchBadges, C.T.BADGES);
+}
+
+async function fetchBadges() {
+  const [au, hu] = await Promise.all([
+    fetchUptime(`${C.ASUS}:61208`),
+    fetchUptime(`${C.HP}:61208`),
+  ]);
+  const c = id('badge-container');
+  if (!c) return;
+  c.innerHTML = [makeBadge('ASUS TUF',au), makeBadge('HP SERVER',hu)].join('');
+}
+
+async function fetchUptime(base) {
+  const r = await sf(`${base}/api/3/uptime`,4000);
+  if (!r) return null;
+  try {
+    const d = await r.json();
+    if (typeof d==='number') return d;
+    if (typeof d==='string') {
+      let s=0;
+      const dm=d.match(/(\d+)\s*day/);       if(dm) s+=parseInt(dm[1])*86400;
+      const tm=d.match(/(\d+):(\d+):(\d+)/); if(tm) s+=parseInt(tm[1])*3600+parseInt(tm[2])*60+parseInt(tm[3]);
+      return s||null;
+    }
+  } catch(_) {}
+  return null;
+}
+
+function makeBadge(name, sec) {
+  if (sec===null) return `<div class="badge iron"><div class="badge-dot"></div>○ ${name} · OFFLINE</div>`;
+  const h=sec/3600, d=h/24;
+  const [tier,icon,label] =
+    d>=30 ? ['diamond','◈',`${Math.floor(d)}D DIAMOND`] :
+    d>=7  ? ['gold',   '★',`${Math.floor(d)}D GOLD`]    :
+    d>=3  ? ['silver', '◆',`${Math.floor(d)}D SILVER`]  :
+    h>=24 ? ['bronze', '●',`${Math.floor(h)}H BRONZE`]  :
+            ['iron',   '○',`${Math.floor(h)}H IRON`];
+  return `<div class="badge ${tier}"><div class="badge-dot"></div>${icon} ${name} · ${label}</div>`;
+}
+
+// ============================================================
+// SHARED UTILITIES
+// ============================================================
+
+// sf = safeFetch: never throws, returns null on any failure.
+// The second argument is the timeout in ms.
+// The third argument is optional extra headers (for AdGuard auth).
+async function sf(url, timeoutMs, headers={}) {
+  try {
+    return await fetch(url, { signal:abort(timeoutMs), headers });
+  } catch(_) { return null; }
+}
+
+// fetchNetdataChart: fetches one chart from a Netdata instance.
+// Returns the parsed JSON or null if the chart doesn't exist.
+async function fetchNetdataChart(base, chart) {
+  const r = await sf(`${base}/api/v1/data?chart=${chart}&points=1&format=json&after=-2`, 4000);
+  if (!r||!r.ok) return null;
+  try {
+    const d = await r.json();
+    if (!d.data?.[0]||d.data[0].length<3) return null;
+    return d;
+  } catch(_) { return null; }
+}
+
+// Cross-browser timeout signal for fetch() calls
+function abort(ms) {
+  if (typeof AbortSignal?.timeout==='function') return AbortSignal.timeout(ms);
+  const c = new AbortController();
+  setTimeout(()=>c.abort(),ms);
+  return c.signal;
+}
+
+// Format megabytes as a readable throughput string
+function fmtBytes(mb) {
+  if (mb>=1000) return `${(mb/1000).toFixed(1)}GB/s`;
+  if (mb<0.1)   return `${(mb*1024).toFixed(0)}KB/s`;
+  return `${mb.toFixed(1)}MB/s`;
+}
+
+// Format megabits/sec for the network bar labels
+function fmtMbps(mbps) {
+  if (mbps>=100) return `${Math.round(mbps)}Mb`;
+  if (mbps>=1)   return `${mbps.toFixed(1)}Mb`;
+  return `${(mbps*1000).toFixed(0)}Kb`;
+}
+
+// Minimal HTML escaper to prevent XSS from domain names
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Shortcuts
+const id      = i => document.getElementById(i);
+const setText = (i,v) => { const e=id(i); if(e) e.textContent=v; };
+const setAttr = (i,a,v) => { const e=id(i); if(e) e.setAttribute(a,v); };
+</script>
+
 </body>
 </html>
