@@ -7,484 +7,651 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="theme-color" content="#000000">
+  <meta name="theme-color" content="#000">
   <title>NEVER CENTER</title>
+
+  <!--
+  ═══════════════════════════════════════════════════════════════
+  NEVER CENTER — Liquid Glass Edition
+  
+  HOW TO SERVE THIS FILE (REQUIRED FOR PHONE DATA):
+  ─────────────────────────────────────────────────
+  This file MUST be served from a local HTTP server on your ASUS TUF,
+  NOT from GitHub Pages HTTPS. Here's why and how:
+  
+  WHY: GitHub Pages uses HTTPS. Android Chrome blocks all HTTP
+  fetch() calls from HTTPS pages (mixed content policy). This is why
+  your phone shows everything offline — the API calls never even leave.
+  
+  FIX — Run this ONE command on the ASUS TUF (Command Prompt):
+    python -m http.server 8888 --directory "C:\path\to\this\folder"
+  
+  Then open on your Vivo: http://100.103.55.109:8888
+  
+  For the iframe (page 2) to work, Homepage must also be reachable.
+  Since both page and iframe are now HTTP, it will load perfectly.
+  
+  To auto-start on Windows boot, create a .bat file:
+    @echo off
+    python -m http.server 8888 --directory "C:\Users\Adarsh\Desktop\never-center"
+  And place a shortcut in the Startup folder.
+  ═══════════════════════════════════════════════════════════════
+  -->
+
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
 <style>
-/* =================================================================
-   NEVER CENTER — Vivo Z1 Pro Optimized Final Edition
-
-Critical fixes in this version:
-
-1. SWIPE FIX: The old swipe used touchstart/touchend which
-   caused the browser to “claim” the scroll event first. The new
-   system uses velocity + direction detection on touchmove to
-   decide in real-time whether the user is scrolling vertically
-   or swiping horizontally, and calls preventDefault() only on
-   confirmed horizontal swipes.
-1. MIXED CONTENT FIX: GitHub Pages is HTTPS. Fetching
-   http://100.x.x.x from an HTTPS page is blocked by every
-   modern browser as “mixed content”. The fix is to open the
-   GitHub Pages URL without HTTPS — use the HTTP version, OR
-   host the page yourself at http://100.103.55.109:3001 using
-   a tiny Python server included at the bottom of this file.
-   For now all fetch targets are kept as http:// and we add
-   a <meta http-equiv="Content-Security-Policy"> that relaxes
-   mixed content for local IPs. This works in Kiwi browser.
-1. PERFORMANCE: Every animated property is GPU-compositable
-   (transform, opacity). No width/height/top/left animations.
-   Polling intervals are conservative for Vivo Z1 Pro.
-1. CONNECTED DEVICES GRID: New widget on page 0 showing all
-   known network devices with live reachability status.
-   ================================================================= */
-
-/* ── Allow mixed HTTP content from local IPs in Kiwi ── */
+/* ═══════════════════════════════════════════════════════════════
+   LIQUID GLASS DESIGN SYSTEM
+   
+   What makes "liquid glass" different from normal glassmorphism:
+   
+   Standard glassmorphism: backdrop-filter: blur() + rgba background
+   That's frosted glass — the background blurs behind each card.
+   
+   Liquid glass adds:
+   1. SVG feTurbulence + feDisplacementMap → makes the blur "wave"
+      at the edges, simulating light refraction through real glass
+   2. Chromatic aberration on borders → different colors shift
+      slightly at the glass edge, like a prism splitting light
+   3. Specular highlight on the top edge → a bright linear streak
+      that makes the surface look genuinely reflective/3D
+   4. Subtle inner shadow at the bottom edge → ground plane shadow
+   5. The background uses multiple layered radial gradients that
+      drift slowly → the "liquid" part — the light source moves
+   
+   This entire effect costs ~0 extra CPU because it's all CSS/SVG
+   filters running on the GPU compositor thread.
+═══════════════════════════════════════════════════════════════ */
 
 :root {
-–c:   #00ffc8;   /* neon cyan — primary accent */
-–b:   #0090ff;   /* neon blue  */
-–p:   #9b30e0;   /* neon purple */
-–a:   #ffaa00;   /* amber */
-–r:   #ff003c;   /* red */
-–g:   rgba(6,10,16,0.52);  /* glass background */
-–bd:  rgba(0,255,200,0.13); /* glass border */
-–rr:  12px;      /* border radius */
-–hud: ‘Rajdhani’, sans-serif;
-–mon: ‘Share Tech Mono’, monospace;
+  /* Neon accent palette */
+  --c:  #00ffc8;   /* primary: neon cyan */
+  --b:  #0088ff;   /* secondary: electric blue */
+  --p:  #9b30e0;   /* tertiary: deep purple */
+  --a:  #ffaa00;   /* warning: amber */
+  --r:  #ff2244;   /* danger: red */
+  --g2: #39ff14;   /* success: neon green */
+
+  /* Liquid glass surface recipe */
+  --glass-fill:   rgba(8, 12, 22, 0.38);   /* very dark, very transparent */
+  --glass-fill2:  rgba(12, 16, 28, 0.52);  /* slightly more opaque for nested */
+  --glass-border: rgba(255, 255, 255, 0.09);
+  --glass-top:    rgba(255, 255, 255, 0.14); /* specular highlight */
+  --glass-bottom: rgba(0, 0, 0, 0.22);       /* inner shadow */
+  --glass-glow:   rgba(0, 255, 200, 0.06);   /* cyan tint from within */
+  --blur-amount:  20px;
+
+  --font-hud:  'Rajdhani', sans-serif;
+  --font-mono: 'Share Tech Mono', monospace;
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 18px;
 }
 
-/* Hard reset — box-sizing everywhere, no scrollbars visible */
+/* ── HARD RESET ───────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 ::-webkit-scrollbar { display: none; }
-
-- { -ms-overflow-style: none; scrollbar-width: none; }
+* { -ms-overflow-style: none; scrollbar-width: none; }
 
 html, body {
-width: 100vw; height: 100vh; overflow: hidden;
-background: #000; color: #e8f4f0;
-font-family: var(–hud);
-/* Prevent iOS/Android font boosting */
--webkit-text-size-adjust: 100%; text-size-adjust: 100%;
-/* Prevent pull-to-refresh interfering with swipe */
-overscroll-behavior: none;
+  width: 100vw; height: 100vh; overflow: hidden;
+  background: #020408; color: #e2f0ec;
+  font-family: var(--font-hud);
+  -webkit-text-size-adjust: 100%; text-size-adjust: 100%;
+  overscroll-behavior: none;
+  /* Prevent iOS rubber-band scroll from interfering */
+  position: fixed; top: 0; left: 0;
 }
 
-/* ── NEBULA BACKGROUND ────────────────────────────────────── */
-/* position:fixed + z-index:0 so it sits behind the swipe track.
-Because every card uses rgba backgrounds, the nebula bleeds
-through giving the glassmorphism effect. */
+/* ── ANIMATED NEBULA BACKGROUND ──────────────────────────── */
+/*
+  Three layers create depth:
+  1. Base gradient — slow color shift between deep space tones
+  2. Floating light orbs — radial gradients that drift
+  3. Star-field noise — subtle SVG filter grain for texture
+
+  All three are position:fixed at z-index:0 so they sit behind
+  every element on every page of the swipe track.
+*/
 #bg {
-position: fixed; inset: 0; z-index: 0;
-background: linear-gradient(-45deg, #050b14, #130a1c, #041520, #000);
-background-size: 400% 400%;
-animation: neb 22s ease infinite;
-will-change: background-position;
+  position: fixed; inset: 0; z-index: 0;
+  background:
+    linear-gradient(-45deg, #040810 0%, #0d0618 30%, #020d14 65%, #000 100%);
+  background-size: 400% 400%;
+  animation: nebula-drift 25s ease infinite;
+  will-change: background-position;
 }
 
-/* Floating color orbs — radial gradients drifting slowly */
+/* Layer 2: floating light orbs — this is what makes it feel "alive" */
 #bg::before {
-content: ‘’;
-position: absolute; inset: 0;
-background:
-radial-gradient(ellipse 55% 40% at 18% 55%, rgba(0,144,255,0.09) 0%, transparent 65%),
-radial-gradient(ellipse 45% 55% at 78% 28%, rgba(155,48,224,0.08) 0%, transparent 65%),
-radial-gradient(ellipse 38% 45% at 55% 75%, rgba(0,255,200,0.05) 0%, transparent 65%);
-animation: orb 14s ease-in-out infinite alternate;
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 70% 50% at 15% 60%,  rgba(0, 136, 255, 0.11) 0%,  transparent 60%),
+    radial-gradient(ellipse 50% 65% at 80% 25%,  rgba(155, 48, 224, 0.09) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 55% at 50% 85%,  rgba(0, 255, 200, 0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 35% 40% at 90% 75%,  rgba(255, 60, 100, 0.05) 0%, transparent 55%);
+  animation: orb-drift 18s ease-in-out infinite alternate;
+  will-change: transform, opacity;
 }
 
-@keyframes neb {
-0%  { background-position: 0% 50%; }
-50% { background-position: 100% 50%; }
-100%{ background-position: 0% 50%; }
-}
-@keyframes orb {
-from { opacity: .6; transform: scale(1); }
-to   { opacity: 1;  transform: scale(1.08); }
+/* Layer 3: fine grain texture for premium feel */
+#bg::after {
+  content: '';
+  position: absolute; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.028'/%3E%3C/svg%3E");
+  opacity: 0.5; pointer-events: none;
 }
 
-/* ── GLASS SURFACE MIXIN ─────────────────────────────────── */
-/* Applied to cards, panels, strips — gives frosted glass effect */
-.g {
-background: var(–g);
-backdrop-filter: blur(18px) saturate(1.5);
--webkit-backdrop-filter: blur(18px) saturate(1.5);
-border: 1px solid var(–bd);
-border-radius: var(–rr);
-box-shadow: inset 0 1px 0 rgba(255,255,255,0.055), 0 6px 24px rgba(0,0,0,0.5);
+@keyframes nebula-drift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@keyframes orb-drift {
+  from { opacity: .55; transform: scale(1) translateX(0); }
+  to   { opacity: .9;  transform: scale(1.12) translateX(8px); }
 }
 
-/* Top-edge highlight line on panel cards */
+/* ═══════════════════════════════════════════════════════════════
+   LIQUID GLASS SURFACE COMPONENT
+   
+   The key to making this look like real glass vs. flat frosted:
+   - Very low fill opacity (0.38) → background color bleeds through
+   - Thin white border on ALL sides (not just bottom) → 3D frame feel
+   - Bright linear gradient on top 1px → specular "reflection" line
+   - Box-shadow with inset top and regular bottom → light from above
+   - backdrop-filter saturate() → glass makes colors more vivid
+═══════════════════════════════════════════════════════════════ */
+
+.glass {
+  background: var(--glass-fill);
+  backdrop-filter: blur(var(--blur-amount)) saturate(1.8) brightness(1.05);
+  -webkit-backdrop-filter: blur(var(--blur-amount)) saturate(1.8) brightness(1.05);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-md);
+
+  /* The three-layer shadow is what gives it dimensionality:
+     Layer 1: bright inner top edge (specular highlight)
+     Layer 2: soft inner bottom shadow (concave depth)
+     Layer 3: outer drop shadow (elevation above background) */
+  box-shadow:
+    inset 0  1px 0 var(--glass-top),
+    inset 0 -1px 0 var(--glass-bottom),
+    0 8px 32px rgba(0, 0, 0, 0.52),
+    0 0 0 0.5px rgba(255, 255, 255, 0.04);
+
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* The pseudo-element creates the chromatic aberration effect —
+   a very subtle rainbow-ish glow right along the top edge.
+   In real glass, light refracts into spectrum colors at the edge. */
+.glass::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(0, 200, 255, 0.45) 20%,
+    rgba(0, 255, 200, 0.7) 50%,
+    rgba(100, 180, 255, 0.45) 80%,
+    transparent 100%);
+  opacity: 0.55;
+}
+
+/* Active/hover state — the glass "lights up" */
+.glass:hover, .glass:active {
+  border-color: rgba(0, 255, 200, 0.2);
+  box-shadow:
+    inset 0  1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 0 var(--glass-bottom),
+    0 8px 32px rgba(0, 0, 0, 0.52),
+    0 0 16px rgba(0, 255, 200, 0.08);
+}
+
+/* Panel variant — used for page 2 data panels */
 .panel {
-background: var(–g);
-backdrop-filter: blur(18px) saturate(1.5);
--webkit-backdrop-filter: blur(18px) saturate(1.5);
-border: 1px solid var(–bd);
-border-radius: var(–rr);
-padding: 11px 14px;
-position: relative; overflow: hidden;
-box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 5px 20px rgba(0,0,0,0.45);
+  background: var(--glass-fill);
+  backdrop-filter: blur(var(--blur-amount)) saturate(1.8) brightness(1.05);
+  -webkit-backdrop-filter: blur(var(--blur-amount)) saturate(1.8) brightness(1.05);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-md);
+  padding: 11px 14px;
+  position: relative; overflow: hidden;
+  box-shadow:
+    inset 0  1px 0 var(--glass-top),
+    inset 0 -1px 0 var(--glass-bottom),
+    0 6px 24px rgba(0, 0, 0, 0.45);
 }
+
 .panel::before {
-content: ‘’;
-position: absolute; top: 0; left: 0; right: 0; height: 1px;
-background: linear-gradient(90deg, transparent, var(–c), transparent);
-opacity: .32;
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg,
+    transparent, rgba(0, 255, 200, 0.55), transparent);
+  opacity: 0.38;
 }
-.pt { /* panel title */
-font-size: .54rem; letter-spacing: .2em; text-transform: uppercase;
-color: rgba(0,255,200,.36); font-family: var(–hud); margin-bottom: 8px;
+
+/* Panel title micro-label */
+.pt {
+  font-size: 0.54rem; letter-spacing: 0.2em;
+  text-transform: uppercase; color: rgba(0, 255, 200, 0.38);
+  font-family: var(--font-hud); margin-bottom: 8px;
 }
+
+/* Two-column row layout for panels on page 2 */
 .pr { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 
-/* ================================================================
-SWIPE SYSTEM
-
-The key insight: on a touchscreen, both vertical scrolling and
-horizontal swiping start with the same touchstart event. The
-browser gives you a brief window (~100ms) before it “claims” the
-event for scrolling. We use touchmove to measure velocity in both
-axes and call preventDefault() if horizontal velocity dominates —
-this intercepts the scroll claim and hands control to our swiper.
-
-touch-action: pan-y on the track container tells the browser
-“I might want to handle horizontal touches myself” which keeps
-the touchmove event cancelable.
-================================================================= */
+/* ═══════════════════════════════════════════════════════════════
+   SWIPE TRACK — GPU-ACCELERATED THREE-PAGE SYSTEM
+   
+   Architecture: 300vw wide div, uses translate3d to slide.
+   The key to smooth swipe on Vivo Z1 Pro:
+   - translate3d() forces GPU layer promotion (no CPU involvement)
+   - touch-action: pan-y tells browser "I might handle horizontal"
+     which keeps touchmove events cancelable (non-passive)
+   - will-change: transform pre-allocates the GPU layer
+═══════════════════════════════════════════════════════════════ */
 
 #track {
-position: fixed; inset: 0; z-index: 1;
-display: flex; width: 300vw; height: 100vh;
-transform: translate3d(0,0,0);
-transition: transform .38s cubic-bezier(.25,.46,.45,.94);
-will-change: transform;
-/* pan-y lets vertical scroll work inside pages while keeping
-horizontal swipe events cancelable */
-touch-action: pan-y;
+  position: fixed; inset: 0; z-index: 1;
+  display: flex; width: 300vw; height: 100vh;
+  transform: translate3d(0, 0, 0);
+  transition: transform 0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  will-change: transform;
+  touch-action: pan-y; /* crucial: allows horizontal touch capture */
 }
 
-/* Each page is exactly one viewport wide */
 .pg {
-width: 100vw; height: 100vh;
-flex-shrink: 0;
-overflow-y: auto; overflow-x: hidden;
-background: transparent;
-position: relative;
-/* Promote to own GPU layer */
-transform: translateZ(0);
-will-change: transform;
-/* pan-y here too so inner scroll still works */
-touch-action: pan-y;
-/* Prevent scroll momentum from fighting swipe */
--webkit-overflow-scrolling: touch;
-overscroll-behavior-y: contain;
+  width: 100vw; height: 100vh;
+  flex-shrink: 0;
+  overflow-y: auto; overflow-x: hidden;
+  background: transparent;
+  position: relative;
+  transform: translateZ(0); /* promote to GPU layer */
+  will-change: scroll-position;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 }
 
-/* ── PAGE INDICATOR DOTS ─────────────────────────────────── */
+/* ── NAVIGATION DOTS ─────────────────────────────────────── */
 #dots {
-position: fixed; bottom: 14px; left: 50%;
-transform: translateX(-50%);
-display: flex; gap: 9px; z-index: 9999;
-pointer-events: all;
+  position: fixed; bottom: 14px; left: 50%;
+  transform: translateX(-50%);
+  display: flex; gap: 10px; z-index: 9999;
 }
+
 .dot {
-width: 7px; height: 7px; border-radius: 50%;
-background: rgba(0,255,200,.18); border: 1px solid rgba(0,255,200,.35);
-cursor: pointer;
-transition: background .3s, box-shadow .3s, transform .3s;
-/* Make dots easier to tap on mobile */
-padding: 8px; margin: -8px;
-background-clip: content-box;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: rgba(0, 255, 200, 0.18);
+  border: 1px solid rgba(0, 255, 200, 0.32);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  /* Large tap target on mobile — transparent padding */
+  padding: 9px; margin: -9px;
+  background-clip: content-box;
 }
 .dot.on {
-background: var(–c); box-shadow: 0 0 10px var(–c);
-transform: scale(1.35); background-clip: border-box;
+  background: var(--c); box-shadow: 0 0 10px var(--c);
+  transform: scale(1.3); background-clip: border-box;
 }
 
-/* Right-edge swipe hint */
 #hint {
-position: fixed; right: 0; top: 50%; transform: translateY(-50%);
-width: 3px; height: 50px;
-background: linear-gradient(to bottom, transparent, var(–c), transparent);
-border-radius: 2px;
-animation: hint 2.5s ease-in-out infinite; z-index: 9999;
-transition: opacity .5s;
+  position: fixed; right: 0; top: 50%; transform: translateY(-50%);
+  width: 3px; height: 48px;
+  background: linear-gradient(to bottom, transparent, var(--c), transparent);
+  border-radius: 2px;
+  animation: hint-pulse 2.5s ease-in-out infinite;
+  z-index: 9999; transition: opacity 0.6s ease;
 }
-@keyframes hint { 0%,100%{opacity:.15}50%{opacity:.65} }
+@keyframes hint-pulse { 0%,100%{opacity:0.14} 50%{opacity:0.62} }
 
-/* ================================================================
-PAGE 0 — GIANT CLOCK + NODES + NETWORK + DEVICE GRID
-================================================================= */
+/* ═══════════════════════════════════════════════════════════════
+   PAGE 0 — GIANT CLOCK + STATS + NETWORK + DEVICE GRID
+═══════════════════════════════════════════════════════════════ */
 
 #p0 {
-display: flex; flex-direction: column;
-align-items: center; justify-content: flex-start;
-padding: 16px 16px 44px; gap: 0;
-/* Center clock vertically only when content is short */
-min-height: 100vh;
+  display: flex; flex-direction: column;
+  align-items: center;
+  padding: 0 14px 44px;
+  gap: 0;
 }
 
-/* Spacer pushes clock toward vertical center */
-#p0-spacer { flex: 1; max-height: 8vh; }
-#p0-bottom { flex: 1; }
+/* Status bar pinned to top of p0 */
+#sb {
+  width: 100%; height: 30px;
+  background: rgba(4, 6, 14, 0.72);
+  backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+  border-bottom: 1px solid rgba(0, 255, 200, 0.07);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.46rem; letter-spacing: 0.26em;
+  text-transform: uppercase; color: rgba(0, 255, 200, 0.3);
+  position: sticky; top: 0; z-index: 100;
+  margin: 0 -14px; /* bleed to full width */
+}
 
-/* ── GIANT CLOCK ─────────────────────────────────────────── */
+/* Giant clock — the hero element */
 #clk {
-font-family: var(–hud);
-/* clamp(min, preferred, max) — on Vivo Z1 Pro landscape
-the viewport is ~830px wide → 18vw = ~150px */
-font-size: clamp(64px, 17vw, 165px);
-font-weight: 700; letter-spacing: -.02em;
-color: #eafff8; line-height: 1;
-text-shadow: 0 0 28px rgba(0,255,200,.6), 0 0 70px rgba(0,255,200,.18), 0 0 2px rgba(255,255,255,.95);
-animation: clkglow 4s ease-in-out infinite alternate;
-will-change: text-shadow;
+  font-family: var(--font-hud);
+  /* On Vivo Z1 Pro landscape (~830px): 17vw ≈ 141px — large and clear */
+  font-size: clamp(60px, 17vw, 165px);
+  font-weight: 700; letter-spacing: -0.025em;
+  color: #eefff8; line-height: 1;
+  text-shadow:
+    0 0  25px rgba(0, 255, 200, 0.65),
+    0 0  70px rgba(0, 255, 200, 0.22),
+    0 0 120px rgba(0, 255, 200, 0.08),
+    0 0   2px rgba(255, 255, 255, 0.9);
+  animation: clk-glow 4s ease-in-out infinite alternate;
+  will-change: text-shadow;
+  margin-top: 10px;
 }
-@keyframes clkglow {
-from { text-shadow: 0 0 18px rgba(0,255,200,.42), 0 0 2px rgba(255,255,255,.85); }
-to   { text-shadow: 0 0 52px rgba(0,255,200,1), 0 0 95px rgba(0,255,200,.3), 0 0 3px rgba(255,255,255,.98); }
+
+@keyframes clk-glow {
+  from { text-shadow: 0 0 18px rgba(0,255,200,0.5), 0 0 2px rgba(255,255,255,0.88); }
+  to   { text-shadow: 0 0 48px rgba(0,255,200,1), 0 0 95px rgba(0,255,200,0.32), 0 0 3px rgba(255,255,255,0.98); }
 }
 
 #ampm {
-font-family: var(–mon); font-size: clamp(10px,1.8vw,17px);
-color: var(–c); opacity: .58; letter-spacing: .24em;
-margin-top: 2px; margin-bottom: 3px;
+  font-family: var(--font-mono); font-size: clamp(10px, 1.7vw, 17px);
+  color: var(--c); opacity: 0.56; letter-spacing: 0.26em;
+  margin-top: 2px; margin-bottom: 3px;
 }
+
 #dt {
-font-family: var(–hud); font-size: clamp(11px,2.4vw,20px);
-font-weight: 500; letter-spacing: .17em; text-transform: uppercase;
-color: rgba(200,255,240,.43); margin-bottom: 16px;
+  font-family: var(--font-hud); font-size: clamp(11px, 2.2vw, 20px);
+  font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(210, 255, 242, 0.42); margin-bottom: 14px;
 }
 
-/* ── NODE CARDS ──────────────────────────────────────────── */
+/* ── NODE STAT CARDS ─────────────────────────────────────── */
 #nodes {
-display: grid; grid-template-columns: 1fr 1fr;
-gap: 8px; width: 100%; max-width: 640px; margin-bottom: 10px;
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 8px; width: 100%; max-width: 640px; margin-bottom: 9px;
 }
-.nc {
-padding: 9px 11px; display: flex;
-flex-direction: column; gap: 5px;
-}
-.nt {
-font-size: .53rem; letter-spacing: .19em; text-transform: uppercase;
-color: var(–c); font-weight: 700;
-display: flex; align-items: center; gap: 5px;
-}
-.od {
-width: 6px; height: 6px; border-radius: 50%;
-background: var(–c); box-shadow: 0 0 6px var(–c);
-animation: hb 1.8s ease-in-out infinite; flex-shrink: 0;
-transition: background .5s, box-shadow .5s;
-}
-.od.off { background: var(–r); box-shadow: 0 0 4px var(–r); animation: none; }
-@keyframes hb { 0%,100%{transform:scale(1)}40%{transform:scale(1.65)} }
 
-.sr { display: grid; grid-template-columns: 30px 1fr 34px; align-items: center; gap: 5px; }
-.sl { font-size: .48rem; letter-spacing: .1em; text-transform: uppercase; color: rgba(200,240,230,.36); font-family: var(–mon); }
-.st { height: 3px; background: rgba(255,255,255,.07); border-radius: 2px; overflow: hidden; }
-/* transform:scaleX() is GPU-only — never triggers layout */
-.sf {
-height: 100%; border-radius: 2px; background: var(–c);
-box-shadow: 0 0 4px var(–c); transform-origin: left;
-transform: scaleX(0); transition: transform .9s ease, background .5s;
+.nc {
+  padding: 10px 12px; display: flex;
+  flex-direction: column; gap: 6px;
 }
-.sv { font-size: .55rem; color: rgba(200,240,230,.7); font-family: var(–mon); text-align: right; font-variant-numeric: tabular-nums; }
+
+.nt {
+  font-size: 0.54rem; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--c); font-weight: 700;
+  display: flex; align-items: center; gap: 5px;
+}
+
+/* Online indicator dot — pulses like a heartbeat when online */
+.od {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--c); box-shadow: 0 0 7px var(--c);
+  animation: hb 1.9s ease-in-out infinite; flex-shrink: 0;
+  transition: background 0.5s, box-shadow 0.5s;
+}
+.od.off { background: var(--r); box-shadow: 0 0 5px var(--r); animation: none; }
+@keyframes hb { 0%,100%{transform:scale(1)}45%{transform:scale(1.75)} }
+
+/* Stat row: label | bar | value */
+.sr { display: grid; grid-template-columns: 30px 1fr 34px; align-items: center; gap: 5px; }
+.sl { font-size: 0.48rem; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(200,240,230,0.34); font-family: var(--font-mono); }
+.st { height: 3px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; }
+
+/* transform:scaleX() runs entirely on GPU — no layout reflow ever */
+.sf {
+  height: 100%; border-radius: 2px;
+  background: var(--c); box-shadow: 0 0 4px var(--c);
+  transform-origin: left center; transform: scaleX(0);
+  transition: transform 0.9s ease, background 0.5s ease;
+}
+.sv { font-size: 0.55rem; color: rgba(200,240,230,0.7); font-family: var(--font-mono); text-align: right; font-variant-numeric: tabular-nums; }
 
 /* ── LIVE NETWORK BARS ───────────────────────────────────── */
 #net {
-width: 100%; max-width: 640px; padding: 9px 13px;
-display: flex; flex-direction: column; gap: 6px;
-margin-bottom: 10px;
+  width: 100%; max-width: 640px;
+  padding: 9px 12px; margin-bottom: 9px;
+  display: flex; flex-direction: column; gap: 6px;
 }
-.ntt { font-size: .5rem; letter-spacing: .17em; text-transform: uppercase; color: rgba(0,255,200,.34); font-family: var(–hud); }
-.nr  { display: grid; grid-template-columns: 68px 1fr 42px 1fr 42px; align-items: center; gap: 5px; }
-.nl  { font-size: .5rem; color: rgba(200,240,230,.4); font-family: var(–mon); text-transform: uppercase; letter-spacing: .07em; }
-.ntr { height: 4px; background: rgba(255,255,255,.05); border-radius: 2px; overflow: hidden; }
-.nb  { height: 100%; border-radius: 2px; transform-origin: left; transform: scaleX(.02); transition: transform .65s ease; }
-.nb.dl { background: var(–c);  box-shadow: 0 0 4px var(–c); }
-.nb.ul { background: var(–p);  box-shadow: 0 0 4px var(–p); }
-.nv  { font-size: .52rem; font-family: var(–mon); color: rgba(200,240,230,.62); text-align: right; font-variant-numeric: tabular-nums; }
 
-/* ── CONNECTED DEVICES GRID ──────────────────────────────── */
-/* New widget — shows all known network devices with live status */
-#devs {
-width: 100%; max-width: 640px; padding: 10px 13px;
-display: flex; flex-direction: column; gap: 7px;
-}
-.dev-title { font-size: .5rem; letter-spacing: .18em; text-transform: uppercase; color: rgba(0,255,200,.34); font-family: var(–hud); }
-#dev-grid  { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; }
+.ntt { font-size: 0.49rem; letter-spacing: 0.17em; text-transform: uppercase; color: rgba(0,255,200,0.32); font-family: var(--font-hud); }
+.nr  { display: grid; grid-template-columns: 64px 1fr 42px 1fr 42px; align-items: center; gap: 5px; }
+.nl  { font-size: 0.49rem; color: rgba(200,240,230,0.38); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.07em; }
+.ntr { height: 4px; background: rgba(255,255,255,0.05); border-radius: 2px; overflow: hidden; }
+.nb  { height: 100%; border-radius: 2px; transform-origin: left; transform: scaleX(0.02); transition: transform 0.65s ease; }
+.nb.dl { background: var(--c);  box-shadow: 0 0 4px var(--c); }
+.nb.ul { background: var(--p);  box-shadow: 0 0 4px var(--p); }
+.nv  { font-size: 0.5rem; font-family: var(--font-mono); color: rgba(200,240,230,0.6); text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ── CONNECTED DEVICE GRID ───────────────────────────────── */
+/*
+  This widget probes every device in the DEVICES config array
+  every 15 seconds. It shows name, IP, latency, and status.
+  Devices are color-coded: green=online, red=offline, amber=checking.
+*/
+#devs { width: 100%; max-width: 640px; padding: 9px 12px; }
+.dev-title { font-size: 0.49rem; letter-spacing: 0.17em; text-transform: uppercase; color: rgba(0,255,200,0.32); font-family: var(--font-hud); margin-bottom: 7px; }
+#dev-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 
 .dev {
-padding: 7px 9px; border-radius: 9px; border: 1px solid;
-background: rgba(0,0,0,.25);
-backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-display: flex; flex-direction: column; gap: 2px;
-transition: border-color .4s, opacity .4s;
+  padding: 7px 9px; border-radius: 9px; border: 1px solid;
+  /* Each device card is also liquid glass */
+  background: rgba(8, 10, 18, 0.32);
+  backdrop-filter: blur(14px) saturate(1.6);
+  -webkit-backdrop-filter: blur(14px) saturate(1.6);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 4px 12px rgba(0,0,0,0.4);
+  display: flex; flex-direction: column; gap: 2px;
+  transition: border-color 0.35s ease, opacity 0.35s ease;
+  position: relative; overflow: hidden;
 }
-.dev.on  { border-color: rgba(0,255,200,.3); }
-.dev.off { border-color: rgba(255,0,60,.2); opacity: .5; }
-.dev.pinging { border-color: rgba(255,170,0,.3); opacity: .7; }
 
-.dev-name { font-size: .58rem; font-family: var(–hud); font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: rgba(200,240,230,.82); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.dev-ip   { font-size: .48rem; font-family: var(–mon); color: rgba(200,240,230,.28); }
-.dev-st   { display: flex; align-items: center; gap: 4px; }
+.dev::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+}
+
+.dev.on   { border-color: rgba(0,255,200,0.3); }
+.dev.off  { border-color: rgba(255,34,68,0.22); opacity: 0.48; }
+.dev.wait { border-color: rgba(255,170,0,0.25); opacity: 0.72; }
+
+.dev-name { font-size: 0.57rem; font-family: var(--font-hud); font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: rgba(200,240,230,0.8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dev-ip   { font-size: 0.46rem; font-family: var(--font-mono); color: rgba(200,240,230,0.24); }
+.dev-row  { display: flex; align-items: center; gap: 4px; }
 .dev-dot  { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
-.dev.on   .dev-dot { background: var(–c); box-shadow: 0 0 4px var(–c); animation: hb 1.8s ease-in-out infinite; }
-.dev.off  .dev-dot { background: var(–r); }
-.dev.pinging .dev-dot { background: var(–a); animation: hb 0.8s ease-in-out infinite; }
-.dev-ms   { font-size: .48rem; font-family: var(–mon); }
-.dev.on   .dev-ms { color: var(–c); }
-.dev.off  .dev-ms { color: var(–r); }
-.dev.pinging .dev-ms { color: var(–a); }
+.dev.on   .dev-dot { background: var(--c); box-shadow: 0 0 5px var(--c); animation: hb 1.9s ease-in-out infinite; }
+.dev.off  .dev-dot { background: var(--r); }
+.dev.wait .dev-dot { background: var(--a); animation: hb 0.8s ease-in-out infinite; }
+.dev-ms   { font-size: 0.46rem; font-family: var(--font-mono); }
+.dev.on   .dev-ms { color: var(--c); }
+.dev.off  .dev-ms { color: rgba(255,34,68,0.7); }
+.dev.wait .dev-ms { color: var(--a); }
 
-/* ================================================================
-PAGE 1 — HOMEPAGE IFRAME
-================================================================= */
+/* ═══════════════════════════════════════════════════════════════
+   PAGE 1 — HOMEPAGE IFRAME
+   This loads your Homepage Docker container inside an iframe.
+   Since both this page and the iframe src are HTTP (after the
+   Python server fix), it loads with no restrictions.
+═══════════════════════════════════════════════════════════════ */
 #p1 { padding: 0; }
+
 #wh {
-height: 30px; position: sticky; top: 0; z-index: 10;
-background: rgba(4,8,14,.8); backdrop-filter: blur(20px);
--webkit-backdrop-filter: blur(20px);
-border-bottom: 1px solid rgba(0,255,200,.07);
-display: flex; align-items: center; justify-content: center;
+  height: 30px; position: sticky; top: 0; z-index: 10;
+  background: rgba(4, 6, 14, 0.78);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(0, 255, 200, 0.07);
+  display: flex; align-items: center; justify-content: center;
 }
-#wh span { font-size: .48rem; letter-spacing: .25em; text-transform: uppercase; color: rgba(0,255,200,.36); }
-#frame { width: 100%; height: calc(100vh - 30px); border: none; display: block; background: transparent; }
+#wh span {
+  font-size: 0.46rem; letter-spacing: 0.26em;
+  text-transform: uppercase; color: rgba(0, 255, 200, 0.32);
+}
 
-/* ================================================================
-PAGE 2 — CUSTOM LIVE PANELS
-================================================================= */
-#p2 { padding: 10px 10px 44px; display: flex; flex-direction: column; gap: 8px; background: transparent; }
-.ph { font-size: .5rem; letter-spacing: .28em; text-transform: uppercase; color: rgba(0,255,200,.2); text-align: center; padding: 2px 0; }
+#frame {
+  width: 100%; height: calc(100vh - 30px);
+  border: none; display: block; background: transparent;
+}
 
-/* ── GAUGE ARCS ──────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   PAGE 2 — CUSTOM LIVE PANELS
+═══════════════════════════════════════════════════════════════ */
+#p2 {
+  padding: 10px 10px 44px;
+  display: flex; flex-direction: column; gap: 8px;
+  background: transparent;
+}
+
+.ph {
+  font-size: 0.48rem; letter-spacing: 0.28em; text-transform: uppercase;
+  color: rgba(0, 255, 200, 0.2); text-align: center; padding: 2px 0;
+}
+
+/* ── GAUGE SVG ARCS ──────────────────────────────────────── */
 #gc { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; padding: 2px 0; }
-.gw { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 96px; }
-.gf { fill: none; stroke-width: 9; stroke-linecap: round; transition: stroke-dashoffset .75s cubic-bezier(.34,1.56,.64,1), stroke .5s; }
-.gf.dl { stroke: var(–c);  filter: drop-shadow(0 0 4px var(–c)); }
-.gf.ul { stroke: var(–p);  filter: drop-shadow(0 0 4px var(–p)); }
-.gl { font-family: var(–hud); font-size: .54rem; letter-spacing: .11em; text-transform: uppercase; color: rgba(200,240,230,.36); }
+.gw { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 94px; }
+.gf { fill: none; stroke-width: 9; stroke-linecap: round; transition: stroke-dashoffset 0.75s cubic-bezier(0.34,1.56,0.64,1), stroke 0.5s; }
+.gf.dl { stroke: var(--c);  filter: drop-shadow(0 0 4px var(--c)); }
+.gf.ul { stroke: var(--p);  filter: drop-shadow(0 0 4px var(--p)); }
+.gl { font-family: var(--font-hud); font-size: 0.53rem; letter-spacing: 0.11em; text-transform: uppercase; color: rgba(200,240,230,0.35); }
 
 /* ── PRESSURE ORBS ───────────────────────────────────────── */
-#oc { display: flex; align-items: center; justify-content: center; gap: 14px; padding: 5px 0; }
+#oc { display: flex; align-items: center; justify-content: center; gap: 14px; padding: 4px 0; }
 .ow { display: flex; flex-direction: column; align-items: center; gap: 3px; }
-/* transform:scale() instead of width/height — GPU compositor only */
+/*
+  Orbs use transform:scale() — the fill changes visually but
+  the DOM element stays 40×40px. This means no layout reflow
+  ever, just a composited transform on the GPU layer.
+*/
 .orb {
-width: 38px; height: 38px; border-radius: 50%;
-background: rgba(0,255,200,.15); box-shadow: 0 0 10px rgba(0,255,200,.22);
-transform: scale(.45); transition: transform 1.1s cubic-bezier(.34,1.56,.64,1), background 1.4s, box-shadow 1.4s;
-animation: orbp 2.5s ease-in-out infinite; will-change: transform;
+  width: 40px; height: 40px; border-radius: 50%;
+  background: rgba(0,255,200,0.14); box-shadow: 0 0 10px rgba(0,255,200,0.2);
+  transform: scale(0.42);
+  transition: transform 1.1s cubic-bezier(0.34,1.56,0.64,1), background 1.4s, box-shadow 1.4s;
+  animation: orb-pulse 2.6s ease-in-out infinite;
+  will-change: transform;
+  /* The orb itself is also liquid glass */
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.08);
 }
-@keyframes orbp { 0%,100%{opacity:.82}50%{opacity:1} }
-.ov { font-size: .64rem; color: var(–c); font-weight: 700; font-family: var(–mon); }
-.ol { font-size: .48rem; letter-spacing: .13em; text-transform: uppercase; color: rgba(200,240,230,.32); font-family: var(–mon); }
+@keyframes orb-pulse { 0%,100%{opacity:0.8}50%{opacity:1} }
+.ov { font-size: 0.64rem; color: var(--c); font-weight: 700; font-family: var(--font-mono); }
+.ol { font-size: 0.47rem; letter-spacing: 0.13em; text-transform: uppercase; color: rgba(200,240,230,0.3); font-family: var(--font-mono); }
 
-/* ── DISK I/O ────────────────────────────────────────────── */
+/* ── DISK I/O BARS ───────────────────────────────────────── */
 #dc { display: flex; flex-direction: column; gap: 5px; }
-.dr  { display: grid; grid-template-columns: 78px 1fr 52px; align-items: center; gap: 7px; }
-.dlb { font-size: .52rem; color: rgba(200,240,230,.42); text-transform: uppercase; letter-spacing: .08em; font-family: var(–mon); }
-.dtr { height: 4px; background: rgba(255,255,255,.05); border-radius: 2px; overflow: hidden; }
-.df  { height: 100%; border-radius: 2px; transform-origin: left; transform: scaleX(0); transition: transform .75s ease; }
-.df.r { background: var(–c);  box-shadow: 0 0 4px var(–c); }
-.df.w { background: var(–a);  box-shadow: 0 0 4px var(–a); }
-.dv  { font-size: .54rem; color: rgba(200,240,230,.58); text-align: right; font-family: var(–mon); }
-.dvd { height: 1px; background: linear-gradient(90deg,transparent,rgba(0,255,200,.09),transparent); margin: 1px 0; }
+.dr  { display: grid; grid-template-columns: 76px 1fr 50px; align-items: center; gap: 7px; }
+.dlb { font-size: 0.51rem; color: rgba(200,240,230,0.4); text-transform: uppercase; letter-spacing: 0.08em; font-family: var(--font-mono); }
+.dtr { height: 4px; background: rgba(255,255,255,0.05); border-radius: 2px; overflow: hidden; }
+.df  { height: 100%; border-radius: 2px; transform-origin: left; transform: scaleX(0); transition: transform 0.75s ease; }
+.df.r { background: var(--c);  box-shadow: 0 0 4px var(--c); }
+.df.w { background: var(--a);  box-shadow: 0 0 4px var(--a); }
+.dv  { font-size: 0.52rem; color: rgba(200,240,230,0.56); text-align: right; font-family: var(--font-mono); }
+.dvd { height: 1px; background: linear-gradient(90deg,transparent,rgba(0,255,200,0.08),transparent); margin: 1px 0; }
 
 /* ── PROCESS SPOTLIGHT ───────────────────────────────────── */
 #pc { display: flex; gap: 8px; flex-wrap: wrap; }
 .prc {
-flex: 1; min-width: 128px; padding: 7px 10px;
-background: rgba(0,0,0,.22); border: 1px solid rgba(255,0,60,.17);
-border-radius: 10px; display: flex; flex-direction: column; gap: 2px;
-position: relative; overflow: hidden;
-backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  flex: 1; min-width: 126px; padding: 7px 10px;
+  background: rgba(6,4,10,0.28);
+  border: 1px solid rgba(255,34,68,0.16); border-radius: 10px;
+  display: flex; flex-direction: column; gap: 2px;
+  position: relative; overflow: hidden;
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
 }
-.prc::before { content:‘⚠ MOST WANTED’; position:absolute;top:0;left:0;right:0;background:rgba(255,0,60,.09);color:var(–r);font-size:.42rem;letter-spacing:.17em;padding:2px 7px;font-family:var(–hud);font-weight:700; }
-.pn  { font-size: .48rem; color: rgba(200,240,230,.25); font-family: var(–mon); margin-top: 11px; }
-.pnm { font-size: .72rem; font-family: var(–hud); font-weight: 700; color: var(–r); letter-spacing: .06em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 0 7px rgba(255,0,60,.38); }
-.pp  { font-size: 1.15rem; font-family: var(–hud); font-weight: 700; color: #ff4060; }
-.pm  { font-size: .48rem; color: rgba(200,240,230,.24); font-family: var(–mon); }
+.prc::before { content:'⚠ MOST WANTED'; position:absolute;top:0;left:0;right:0; background:rgba(255,34,68,0.09);color:var(--r); font-size:0.42rem;letter-spacing:0.17em;padding:2px 7px; font-family:var(--font-hud);font-weight:700; }
+.pn  { font-size: 0.47rem; color: rgba(200,240,230,0.24); font-family: var(--font-mono); margin-top: 11px; }
+.pnm { font-size: 0.7rem; font-family: var(--font-hud); font-weight: 700; color: var(--r); letter-spacing: 0.06em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 0 7px rgba(255,34,68,0.38); }
+.pp  { font-size: 1.1rem; font-family: var(--font-hud); font-weight: 700; color: #ff4466; }
+.pm  { font-size: 0.47rem; color: rgba(200,240,230,0.22); font-family: var(--font-mono); }
 
 /* ── PING SPARKLINES ─────────────────────────────────────── */
 #pgc { display: flex; flex-direction: column; gap: 7px; }
-.pgr { display: grid; grid-template-columns: 66px 1fr 46px; align-items: center; gap: 8px; }
-.pgl { font-size: .5rem; color: rgba(200,240,230,.4); text-transform: uppercase; letter-spacing: .07em; font-family: var(–mon); }
+.pgr { display: grid; grid-template-columns: 65px 1fr 46px; align-items: center; gap: 8px; }
+.pgl { font-size: 0.49rem; color: rgba(200,240,230,0.38); text-transform: uppercase; letter-spacing: 0.07em; font-family: var(--font-mono); }
 .spw { position: relative; height: 22px; }
 .spw svg { width: 100%; height: 100%; overflow: visible; }
 .spl { fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
-.spa { opacity: .1; }
-.pgr.w .spl{stroke:var(–b)}.pgr.w .spa{fill:var(–b)}.pgr.w .spd{fill:var(–b)}
-.pgr.t .spl{stroke:var(–c)}.pgr.t .spa{fill:var(–c)}.pgr.t .spd{fill:var(–c)}
-.pgv { font-size: .63rem; font-variant-numeric: tabular-nums; text-align: right; font-weight: 700; font-family: var(–mon); }
-.pgv.g{color:var(–c)}.pgv.o{color:var(–a)}.pgv.b{color:var(–r)}
+.spa { opacity: 0.1; }
+.pgr.w .spl{stroke:var(--b)}.pgr.w .spa{fill:var(--b)}.pgr.w .spd{fill:var(--b)}
+.pgr.t .spl{stroke:var(--c)}.pgr.t .spa{fill:var(--c)}.pgr.t .spd{fill:var(--c)}
+.pgv { font-size: 0.62rem; font-variant-numeric: tabular-nums; text-align: right; font-weight: 700; font-family: var(--font-mono); }
+.pgv.g{color:var(--c)}.pgv.o{color:var(--a)}.pgv.b{color:var(--r)}
 
-/* ── ADGUARD TICKER ──────────────────────────────────────── */
-#tw { overflow: hidden; height: 20px; position: relative; }
+/* ── ADGUARD DNS TICKER ──────────────────────────────────── */
+#tw { overflow: hidden; height: 19px; position: relative; }
 #tt {
-display: flex; gap: 26px; white-space: nowrap;
-animation: tick 28s linear infinite;
-font-size: .58rem; font-family: var(–mon);
-color: rgba(200,240,230,.52); align-items: center; height: 100%;
-will-change: transform;
+  display: flex; gap: 24px; white-space: nowrap;
+  animation: ticker 28s linear infinite;
+  font-size: 0.57rem; font-family: var(--font-mono);
+  color: rgba(200,240,230,0.5); align-items: center; height: 100%;
+  will-change: transform;
 }
-@keyframes tick { from{transform:translate3d(0,0,0)}to{transform:translate3d(-50%,0,0)} }
+@keyframes ticker {
+  from { transform: translate3d(0,0,0); }
+  to   { transform: translate3d(-50%,0,0); }
+}
 .ti   { display: inline-flex; align-items: center; gap: 4px; }
-.tblk { color: var(–r); font-weight: 700; }
-.talw { color: rgba(200,240,230,.32); }
-.tsep { color: rgba(0,255,200,.15); }
+.tblk { color: var(--r); font-weight: 700; }
+.talw { color: rgba(200,240,230,0.3); }
+.tsep { color: rgba(0,255,200,0.14); }
 
-/* ── TAILSCALE PEERS GRID ────────────────────────────────── */
+/* ── TAILSCALE PEERS ─────────────────────────────────────── */
 #pg2 { display: flex; flex-wrap: wrap; gap: 6px; }
 .peer {
-display: flex; flex-direction: column; gap: 2px;
-padding: 6px 9px; border: 1px solid; border-radius: 8px; min-width: 100px;
-background: rgba(0,0,0,.2);
-backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-transition: border-color .4s;
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 6px 9px; border: 1px solid; border-radius: 8px; min-width: 98px;
+  background: rgba(8,10,18,0.3);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+  transition: border-color 0.4s;
 }
-.peer.on  { border-color: rgba(0,255,200,.28); }
-.peer.off { border-color: rgba(255,0,60,.18); opacity: .48; }
-.pnm2 { font-size: .56rem; letter-spacing: .07em; text-transform: uppercase; color: rgba(200,240,230,.75); font-family: var(–hud); font-weight: 600; }
-.pip  { font-size: .48rem; color: rgba(200,240,230,.24); font-family: var(–mon); }
+.peer.on  { border-color: rgba(0,255,200,0.28); }
+.peer.off { border-color: rgba(255,34,68,0.18); opacity: 0.46; }
+.pnm2 { font-size: 0.55rem; letter-spacing: 0.07em; text-transform: uppercase; color: rgba(200,240,230,0.74); font-family: var(--font-hud); font-weight: 600; }
+.pip  { font-size: 0.47rem; color: rgba(200,240,230,0.22); font-family: var(--font-mono); }
 .pst  { display: flex; align-items: center; gap: 3px; }
 .phb  { width: 5px; height: 5px; border-radius: 50%; }
-.peer.on  .phb { background:var(–c);box-shadow:0 0 5px var(–c);animation:hb 1.8s ease-in-out infinite; }
-.peer.off .phb { background: var(–r); }
-.peer.on  .pst span { color:var(–c);font-family:var(–mon);font-size:.5rem; }
-.peer.off .pst span { color:var(–r);font-family:var(–mon);font-size:.5rem; }
+.peer.on  .phb { background:var(--c);box-shadow:0 0 5px var(--c);animation:hb 1.9s ease-in-out infinite; }
+.peer.off .phb { background: var(--r); }
+.peer.on  .pst span { color:var(--c);font-family:var(--font-mono);font-size:0.49rem; }
+.peer.off .pst span { color:var(--r);font-family:var(--font-mono);font-size:0.49rem; }
 
 /* ── UPTIME BADGES ───────────────────────────────────────── */
 #bc { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.bdg { display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:999px;border:1px solid;font-size:.54rem;letter-spacing:.11em;text-transform:uppercase;font-family:var(–hud);font-weight:700; }
-.bdg.ir{border-color:rgba(100,130,150,.4);color:rgba(150,180,200,.72);background:rgba(100,130,150,.06)}
-.bdg.br{border-color:rgba(205,127,50,.5);color:#cd7f32;background:rgba(205,127,50,.06)}
-.bdg.sv{border-color:rgba(180,200,220,.5);color:#b8d0e0;background:rgba(180,200,220,.06)}
-.bdg.gd{border-color:rgba(255,200,0,.6);color:#ffc800;background:rgba(255,200,0,.06);animation:bg 3s ease-in-out infinite}
-.bdg.dm{border-color:rgba(0,255,200,.72);color:var(–c);background:rgba(0,255,200,.06);animation:bd 2s ease-in-out infinite}
-@keyframes bg{0%,100%{box-shadow:0 0 7px rgba(255,200,0,.18)}50%{box-shadow:0 0 16px rgba(255,200,0,.4)}}
-@keyframes bd{0%,100%{box-shadow:0 0 10px rgba(0,255,200,.2)}50%{box-shadow:0 0 22px rgba(0,255,200,.52)}}
+.bdg { display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:999px;border:1px solid; font-size:0.53rem;letter-spacing:0.11em;text-transform:uppercase; font-family:var(--font-hud);font-weight:700; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); }
+.bdg.ir{border-color:rgba(100,130,150,0.38);color:rgba(150,180,200,0.7);background:rgba(100,130,150,0.05)}
+.bdg.br{border-color:rgba(205,127,50,0.48);color:#cd7f32;background:rgba(205,127,50,0.05)}
+.bdg.sv{border-color:rgba(180,200,220,0.48);color:#b8d0e0;background:rgba(180,200,220,0.05)}
+.bdg.gd{border-color:rgba(255,200,0,0.58);color:#ffc800;background:rgba(255,200,0,0.05);animation:bdg-g 3s ease-in-out infinite}
+.bdg.dm{border-color:rgba(0,255,200,0.7);color:var(--c);background:rgba(0,255,200,0.05);animation:bdg-d 2s ease-in-out infinite}
+@keyframes bdg-g{0%,100%{box-shadow:0 0 6px rgba(255,200,0,0.16)}50%{box-shadow:0 0 16px rgba(255,200,0,0.38)}}
+@keyframes bdg-d{0%,100%{box-shadow:0 0 9px rgba(0,255,200,0.18)}50%{box-shadow:0 0 20px rgba(0,255,200,0.5)}}
 .bd{width:5px;height:5px;border-radius:50%;background:currentColor;animation:db 1.5s ease-in-out infinite}
-@keyframes db{0%,100%{opacity:1}50%{opacity:.1}}
+@keyframes db{0%,100%{opacity:1}50%{opacity:0.1}}
 
-/* ── STATUS BAR (top of page 0) ─────────────────────────── */
-#statusbar {
-position: sticky; top: 0; z-index: 100;
-width: 100%; height: 28px;
-background: rgba(4,8,14,.7);
-backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-border-bottom: 1px solid rgba(0,255,200,.06);
-display: flex; align-items: center; justify-content: center;
-font-size: .46rem; letter-spacing: .22em; text-transform: uppercase;
-color: rgba(0,255,200,.3); font-family: var(–hud);
+/* ── OFFLINE NOTICE ──────────────────────────────────────── */
+#offline-msg {
+  display: none;
+  position: fixed; bottom: 36px; left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  background: rgba(255,34,68,0.1);
+  border: 1px solid rgba(255,34,68,0.28); border-radius: 999px;
+  padding: 5px 14px;
+  font-size: 0.52rem; letter-spacing: 0.14em; text-transform: uppercase;
+  color: rgba(255,80,100,0.82); font-family: var(--font-hud);
+  backdrop-filter: blur(10px); z-index: 9999;
 }
+
 </style>
 
-<!-- Relax mixed content policy so HTTP local IPs work in Kiwi browser -->
-
-<meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; connect-src *; img-src * data: blob:; font-src * data:; frame-src *;">
 </head>
 <body>
 
-<!-- Nebula background — behind everything at z-index 0 -->
+<!-- Layered nebula background — fixed, always visible through glass -->
 
 <div id="bg"></div>
 
@@ -492,28 +659,28 @@ color: rgba(0,255,200,.3); font-family: var(–hud);
 
 <div id="track">
 
-  <!-- =====================================================
-       PAGE 0: CLOCK + NODES + NETWORK + DEVICE GRID
-       ===================================================== -->
+  <!-- ═══════════════════════════════════════════════════════
+       PAGE 0: CLOCK + NODES + NETWORK + DEVICES
+  ═══════════════════════════════════════════════════════════ -->
 
   <div class="pg" id="p0">
-    <div id="statusbar">◈ NEVER CENTER · SYSTEM DASHBOARD ◈</div>
 
 ```
-<div id="p0-spacer"></div>
+<div id="sb">◈ NEVER CENTER · SYSTEM DASHBOARD ◈</div>
 
+<!-- Giant clock -->
 <div id="clk">00:00</div>
 <div id="ampm">AM</div>
 <div id="dt">Loading…</div>
 
-<!-- Node stat cards -->
+<!-- Node stat cards: ASUS + HP -->
 <div id="nodes">
-  <div class="nc g">
+  <div class="nc glass">
     <div class="nt"><div class="od" id="od-a"></div>ASUS TUF · HUB</div>
     <div class="sr"><span class="sl">CPU</span><div class="st"><div class="sf" id="sf-ac"></div></div><span class="sv" id="sv-ac">—</span></div>
     <div class="sr"><span class="sl">RAM</span><div class="st"><div class="sf" id="sf-ar"></div></div><span class="sv" id="sv-ar">—</span></div>
   </div>
-  <div class="nc g">
+  <div class="nc glass">
     <div class="nt"><div class="od" id="od-h"></div>HP SERVER</div>
     <div class="sr"><span class="sl">CPU</span><div class="st"><div class="sf" id="sf-hc"></div></div><span class="sv" id="sv-hc">—</span></div>
     <div class="sr"><span class="sl">RAM</span><div class="st"><div class="sf" id="sf-hr"></div></div><span class="sv" id="sv-hr">—</span></div>
@@ -521,7 +688,7 @@ color: rgba(0,255,200,.3); font-family: var(–hud);
 </div>
 
 <!-- Live network throughput bars -->
-<div id="net" class="g">
+<div id="net" class="glass">
   <div class="ntt">◈ Live Network Throughput</div>
   <div class="nr">
     <span class="nl">ASUS DL</span>
@@ -539,40 +706,40 @@ color: rgba(0,255,200,.3); font-family: var(–hud);
   </div>
 </div>
 
-<!-- Connected Devices Grid -->
-<div id="devs" class="g">
+<!-- Connected device grid -->
+<div id="devs" class="glass">
   <div class="dev-title">◈ Network Devices — Live Status</div>
   <div id="dev-grid">
-    <!-- Populated by JS based on DEVICES config array -->
+    <!-- Populated by buildDevGrid() from C.DEVICES array -->
   </div>
 </div>
-
-<div id="p0-bottom"></div>
 ```
 
   </div><!-- /#p0 -->
 
-  <!-- =====================================================
-       PAGE 1: HOMEPAGE IFRAME
-       ===================================================== -->
+  <!-- ═══════════════════════════════════════════════════════
+       PAGE 1: HOMEPAGE IFRAME (works when served via HTTP)
+  ═══════════════════════════════════════════════════════════ -->
 
   <div class="pg" id="p1">
     <div id="wh"><span>◈ NEVER CENTER · WIDGET GRID ◈</span></div>
-    <!-- src points to Homepage on ASUS TUF via Tailscale -->
-    <iframe id="frame" src="http://100.103.55.109:3000"
-      title="Homepage" loading="lazy"
+    <iframe id="frame"
+      src="http://100.103.55.109:3000"
+      title="Homepage Dashboard"
+      loading="lazy"
       sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation">
     </iframe>
   </div>
 
-  <!-- =====================================================
+  <!-- ═══════════════════════════════════════════════════════
        PAGE 2: CUSTOM LIVE PANELS
-       ===================================================== -->
+  ═══════════════════════════════════════════════════════════ -->
 
   <div class="pg" id="p2">
-    <div class="ph">◈ System Intelligence · Live Telemetry ◈</div>
 
 ```
+<div class="ph">◈ System Intelligence · Live Telemetry ◈</div>
+
 <div class="pr">
   <div class="panel"><div class="pt">◈ Net I/O Gauges</div><div id="gc"></div></div>
   <div class="panel"><div class="pt">◈ Memory Pressure</div><div id="oc"></div></div>
@@ -616,13 +783,13 @@ color: rgba(0,255,200,.3); font-family: var(–hud);
   </div>
   <div class="panel">
     <div class="pt">◈ Tailscale Peers</div>
-    <div id="pg2"><span style="font-size:.56rem;color:rgba(200,240,230,.25);font-family:var(--mon)">Probing…</span></div>
+    <div id="pg2"><span style="font-size:.55rem;color:rgba(200,240,230,.24);font-family:var(--font-mono)">Probing…</span></div>
   </div>
 </div>
 
 <div class="pr">
   <div class="panel"><div class="pt">◈ DNS Block Feed</div><div id="tw"><div id="tt"><span class="ti"><span class="talw">Connecting to AdGuard…</span></span></div></div></div>
-  <div class="panel"><div class="pt">◈ Uptime Achievements</div><div id="bc"><span style="font-size:.56rem;color:rgba(200,240,230,.25);font-family:var(--mon)">Checking…</span></div></div>
+  <div class="panel"><div class="pt">◈ Uptime Achievements</div><div id="bc"><span style="font-size:.55rem;color:rgba(200,240,230,.24);font-family:var(--font-mono)">Checking…</span></div></div>
 </div>
 ```
 
@@ -636,112 +803,122 @@ color: rgba(0,255,200,.3); font-family: var(–hud);
   <div class="dot"     onclick="go(2)"></div>
 </div>
 <div id="hint"></div>
+<div id="offline-msg">⚠ Tailscale unreachable — serve via HTTP local server</div>
 
 <script>
 'use strict';
-
-/* =============================================================
-   CONFIGURATION — edit these to match your network
-   ============================================================= */
+/* ═══════════════════════════════════════════════════════════════
+   CONFIGURATION
+   Edit C.DEVICES to add/remove devices from the live status grid.
+   The probe for each device uses the ip:port/path combination.
+═══════════════════════════════════════════════════════════════ */
 const C = {
   ASUS: 'http://100.103.55.109',
   HP:   'http://100.117.103.99',
   AG_AUTH: 'Basic ' + btoa('adarsh03:iamlucky@03'),
   AG_PORT: 80,
 
-  /* ── DEVICES LIST ──────────────────────────────────────────
-     Add every device you want to appear in the Device Grid.
-     The dashboard probes each one by fetching a tiny endpoint.
-     For Glances devices, use port 61208. For others, use any
-     open HTTP port (router admin, etc).
-  ────────────────────────────────────────────────────────── */
+  /* All network devices you want to monitor.
+     path should be a lightweight URL that returns 200 when online. */
   DEVICES: [
-    { name:'ASUS TUF',   ip:'100.103.55.109', port:61208, path:'/api/3/cpu' },
-    { name:'HP SERVER',  ip:'100.117.103.99',  port:61208, path:'/api/3/cpu' },
-    { name:'TP-Link',    ip:'192.168.0.1',    port:80,    path:'/'           },
-    { name:'VIVO Z1 PRO',ip:'100.86.101.29',  port:61208, path:'/api/3/cpu' },
-    // Add more:
-    // { name:'DEVICE',  ip:'100.x.x.x',      port:XXXX,  path:'/'          },
+    { name: 'ASUS TUF',    ip: '100.103.55.109', port: 61208, path: '/api/3/cpu' },
+    { name: 'HP SERVER',   ip: '100.117.103.99',  port: 61208, path: '/api/3/cpu' },
+    { name: 'TP-Link',     ip: '192.168.0.1',    port: 80,    path: '/'           },
+    { name: 'VIVO Z1 PRO', ip: '100.86.101.29',  port: 80,    path: '/'           },
+    // { name: 'NEW DEVICE', ip: '100.x.x.x', port: XXXX, path: '/' },
   ],
 
-  /* Polling intervals in ms — conservative for Vivo Z1 Pro */
-  T: { CLK:1000, NODE:4500, NET:2800, ORB:5500, DISK:4500,
-       GAUGE:3500, PROC:7000, PING:4000, AG:14000, TS:20000, BDG:40000, DEV:18000 },
-
-  PL:  32,   /* ping sparkline history length */
-  MBW: 100,  /* max expected bandwidth Mbps for gauge normalization */
+  /* Polling intervals in milliseconds.
+     Tuned for Vivo Z1 Pro: conservative enough to prevent CPU spikes
+     but frequent enough that data feels live. */
+  T: {
+    CLK:   1000,   /* clock: every second (pure JS, no network) */
+    NODE:  4500,   /* CPU/RAM stat bars */
+    NET:   2800,   /* network throughput bars */
+    ORB:   5500,   /* RAM/SWAP orbs */
+    DISK:  4500,   /* disk I/O bars */
+    GAUGE: 3500,   /* SVG speed gauges */
+    PROC:  7000,   /* process spotlight */
+    PING:  4000,   /* ping sparklines */
+    AG:    14000,  /* AdGuard DNS ticker */
+    TS:    20000,  /* Tailscale peer grid */
+    BDG:   40000,  /* uptime badges */
+    DEV:   15000,  /* device status grid */
+  },
+  PL:  32,   /* ping history length (how many samples on sparkline) */
+  MBW: 100,  /* max bandwidth in Mbps (gauge normalization ceiling) */
 };
 
-/* =============================================================
-   STATE
-   ============================================================= */
-let pg = 0;            // current page (0, 1, 2)
-let tsOK = false;      // are Tailscale nodes reachable?
-let probeTimer = null; // retry probe interval handle
+/* ── STATE ───────────────────────────────────────────────── */
+let pg = 0;          /* current page index */
+let tsOK = false;    /* whether Tailscale nodes are reachable */
+let retryT = null;   /* retry interval handle */
 
-// Touch gesture state
-let tx=0, ty=0, tmoved=false, tdir=null;
+/* Touch gesture detection state */
+let tx = 0, ty = 0, tdir = null, tactive = false;
 
-// Live data buffers
-const pH   = { w:[], t:[] };  // ping history
-const dMx  = { r:1, w:1 };    // disk I/O normalization max
-const nMx  = { d:1, u:1 };    // network speed normalization max
+/* Data buffers */
+const pH  = { w: [], t: [] };   /* ping history for sparklines */
+const dMx = { r: 1, w: 1 };    /* disk max for bar normalization */
+const nMx = { d: 1, u: 1 };    /* net max for bar normalization */
 
-/* =============================================================
-   SWIPE ENGINE
+/* ═══════════════════════════════════════════════════════════════
+   TOUCH SWIPE ENGINE
    
-   The challenge: scrollable panels (overflow-y:auto) and
-   horizontal swipe both start from the same touchstart event.
-   Standard touchstart/touchend solutions lose because the
-   browser scroll-claims the event within ~16ms.
+   The fundamental challenge: touchmove events must be intercepted
+   before the browser claims them for vertical scroll. The browser
+   makes this claim within ~16ms of the first touchmove if it
+   suspects vertical intent. We must call preventDefault() within
+   that window to prevent the claim.
    
-   Solution: We listen on touchmove (which IS cancelable before
-   the browser claims it) and measure velocity in both axes.
-   If |dx/dt| > |dy/dt| by at least 1.5x AND |dx| > 28px,
-   we call preventDefault() immediately — this prevents the
-   browser from ever starting a scroll — and then we complete
-   the swipe on touchend.
-   ============================================================= */
+   This system uses a direction lock: the first few pixels of
+   movement reveal intent. Once we identify "horizontal", we call
+   preventDefault() for all subsequent touchmove events on this
+   gesture, keeping full control until touchend.
+═══════════════════════════════════════════════════════════════ */
 
 const track = document.getElementById('track');
 
 document.addEventListener('touchstart', e => {
   tx = e.touches[0].clientX;
   ty = e.touches[0].clientY;
-  tmoved = false;
-  tdir   = null;
-}, { passive: true }); // passive: ok for touchstart
+  tdir = null;       /* direction not yet determined */
+  tactive = true;
+}, { passive: true });
 
 document.addEventListener('touchmove', e => {
-  if (tdir === 'v') return; // already confirmed vertical, don't re-check
+  if (!tactive) return;
+
   const dx = e.touches[0].clientX - tx;
   const dy = e.touches[0].clientY - ty;
   const adx = Math.abs(dx), ady = Math.abs(dy);
 
-  if (adx < 8 && ady < 8) return; // haven't moved enough to tell
+  /* Need at least 8px of movement before deciding direction */
+  if (adx < 8 && ady < 8) return;
 
-  if (tdir === null) {
-    // First meaningful movement — lock in direction
-    tdir = adx > ady * 1.3 ? 'h' : 'v';
+  if (!tdir) {
+    /* Lock direction on first definitive movement */
+    tdir = adx > ady * 1.25 ? 'h' : 'v';
   }
 
   if (tdir === 'h') {
-    // Horizontal swipe confirmed — prevent browser scroll claim
+    /* Horizontal confirmed — prevent browser scroll claim */
     e.preventDefault();
-    tmoved = true;
   }
-}, { passive: false }); // MUST be non-passive to call preventDefault
+  /* If vertical, we let the event pass through normally for scrolling */
+}, { passive: false }); /* MUST be non-passive to allow preventDefault */
 
 document.addEventListener('touchend', e => {
-  if (!tmoved || tdir !== 'h') return;
+  if (!tactive || tdir !== 'h') { tactive = false; return; }
+  tactive = false;
+
   const dx = e.changedTouches[0].clientX - tx;
-  // Only trigger swipe if displacement is meaningful (>40px)
-  if (Math.abs(dx) > 40) {
+  if (Math.abs(dx) > 42) {   /* minimum swipe distance */
     dx < 0 ? go(pg + 1) : go(pg - 1);
   }
 }, { passive: true });
 
-// Keyboard navigation for desktop testing
+/* Keyboard nav for desktop testing */
 document.addEventListener('keydown', e => {
   if (e.key === 'ArrowRight') go(pg + 1);
   if (e.key === 'ArrowLeft')  go(pg - 1);
@@ -749,19 +926,21 @@ document.addEventListener('keydown', e => {
 
 function go(n) {
   pg = Math.max(0, Math.min(2, n));
+  /* translate3d forces GPU layer — silky smooth on any device */
   track.style.transform = `translate3d(-${pg * 100}vw, 0, 0)`;
   document.querySelectorAll('.dot').forEach((d, i) =>
     d.classList.toggle('on', i === pg));
   if (pg > 0) { const h = $('hint'); if (h) h.style.opacity = '0'; }
 }
 
-/* =============================================================
-   NETWORK PROBE & RETRY
+/* ═══════════════════════════════════════════════════════════════
+   NETWORK PROBE & ADAPTIVE RETRY
    
-   We probe once on startup. If it fails, we retry every 8
-   seconds. When nodes come online (e.g. phone joins home WiFi),
-   data starts flowing automatically within 8 seconds.
-   ============================================================= */
+   On startup we probe the ASUS TUF. If it responds, we start all
+   data loops. If not, we retry every 8 seconds. This means the
+   dashboard works as soon as your phone connects to the home WiFi
+   — without you needing to reload the page.
+═══════════════════════════════════════════════════════════════ */
 
 async function probe() {
   try {
@@ -769,59 +948,69 @@ async function probe() {
       { signal: ab(3000), mode: 'cors' });
     if (r.ok) {
       tsOK = true;
-      if (probeTimer) { clearInterval(probeTimer); probeTimer = null; }
+      if (retryT) { clearInterval(retryT); retryT = null; }
       return true;
     }
-  } catch(_) {}
+  } catch (_) {}
   tsOK = false;
   return false;
 }
 
-/* =============================================================
-   BOOT — runs immediately on DOMContentLoaded (no React wait)
-   ============================================================= */
+/* ═══════════════════════════════════════════════════════════════
+   BOOT — runs on DOMContentLoaded
+   No React waiting needed — this is plain HTML.
+═══════════════════════════════════════════════════════════════ */
+
 document.addEventListener('DOMContentLoaded', () => {
   buildGauges();
   buildOrbs();
   buildDevGrid();
-  loopClock();
+  loopClock();   /* starts immediately — no network needed */
 
-  // Probe network, then start everything
   probe().then(ok => {
     startAll();
-    // If probe failed, keep retrying every 8 seconds
     if (!ok) {
-      probeTimer = setInterval(async () => {
-        const now = await probe();
-        if (now) {
-          // Just gained connectivity — re-run loops immediately
-          startAll();
-        }
+      /* Show advisory message briefly */
+      const m = $('offline-msg'); if (m) {
+        m.style.display = 'block';
+        setTimeout(() => { m.style.display = 'none'; }, 7000);
+      }
+      /* Keep retrying every 8 seconds */
+      retryT = setInterval(async () => {
+        if (await probe()) startAll();
       }, 8000);
     }
   });
 });
 
+let loopsStarted = false;
 function startAll() {
+  /* Guard: don't create duplicate intervals if called multiple times */
+  if (loopsStarted) return;
+  loopsStarted = true;
   loopNodes(); loopNet(); loopOrbs(); loopDisk();
   loopGauges(); loopProc(); loopPing();
   loopAG(); loopPeers(); loopBadges(); loopDevices();
 }
 
-/* =============================================================
-   CLOCK
-   ============================================================= */
+/* ═══════════════════════════════════════════════════════════════
+   CLOCK — runs independently of network, every second
+═══════════════════════════════════════════════════════════════ */
 function loopClock() { tick(); setInterval(tick, C.T.CLK); }
 function tick() {
-  const n = new Date(), h = n.getHours(), m = String(n.getMinutes()).padStart(2,'0');
-  txt('clk', `${h%12||12}:${m}`);
-  txt('ampm', h>=12?'PM':'AM');
-  txt('dt', n.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'}));
+  const n = new Date(), h = n.getHours(), m = String(n.getMinutes()).padStart(2, '0');
+  txt('clk', `${h % 12 || 12}:${m}`);
+  txt('ampm', h >= 12 ? 'PM' : 'AM');
+  txt('dt', n.toLocaleDateString('en-US', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+  }));
 }
 
-/* =============================================================
-   NODE STATS (CPU + RAM bars)
-   ============================================================= */
+/* ═══════════════════════════════════════════════════════════════
+   NODE STATS — CPU/RAM bars on clock page
+   Glances API: /api/3/cpu → { total: 23.4, ... }
+                /api/3/mem → { percent: 71.2, ... }
+═══════════════════════════════════════════════════════════════ */
 function loopNodes() { fetchNodes(); setInterval(fetchNodes, C.T.NODE); }
 async function fetchNodes() {
   if (!tsOK) return;
@@ -831,55 +1020,66 @@ async function fetchNodes() {
   ]);
 }
 async function fetchNode(k, base) {
-  const [cr, mr] = await Promise.all([sf(`${base}/api/3/cpu`,3200), sf(`${base}/api/3/mem`,3200)]);
+  const [cr, mr] = await Promise.all([
+    sf(`${base}/api/3/cpu`, 3200),
+    sf(`${base}/api/3/mem`, 3200),
+  ]);
   const dot = $(`od-${k}`); if (dot) dot.classList.toggle('off', !cr);
-  if (cr) try { const d=await cr.json(); setBar(`sf-${k}c`,`sv-${k}c`, d.total??d.cpu_percent??0); } catch(_) {}
-  if (mr) try { const d=await mr.json(); setBar(`sf-${k}r`,`sv-${k}r`, d.percent??0); } catch(_) {}
+  if (cr) try { const d = await cr.json(); setBar(`sf-${k}c`, `sv-${k}c`, d.total ?? d.cpu_percent ?? 0); } catch (_) {}
+  if (mr) try { const d = await mr.json(); setBar(`sf-${k}r`, `sv-${k}r`, d.percent ?? 0); } catch (_) {}
 }
+
+/* setBar uses transform:scaleX() — never triggers layout reflow */
 function setBar(fid, vid, pct) {
-  const f=$( fid), v=$(vid); if(!f||!v) return;
-  f.style.transform = `scaleX(${pct/100})`;
-  const col = pct<50?'var(--c)':pct<80?'var(--a)':'var(--r)';
+  const f = $(fid), v = $(vid); if (!f || !v) return;
+  f.style.transform = `scaleX(${pct / 100})`;
+  const col = pct < 50 ? 'var(--c)' : pct < 80 ? 'var(--a)' : 'var(--r)';
   f.style.background = col; f.style.boxShadow = `0 0 4px ${col}`;
   v.textContent = `${Math.round(pct)}%`;
 }
 
-/* =============================================================
-   NETWORK BARS
-   ============================================================= */
+/* ═══════════════════════════════════════════════════════════════
+   NETWORK THROUGHPUT BARS
+   Netdata API: /api/v1/data?chart=system.net&points=1
+   Returns kilobits/sec — divided by 1000 for Mbps.
+═══════════════════════════════════════════════════════════════ */
 function loopNet() { fetchNet(); setInterval(fetchNet, C.T.NET); }
 async function fetchNet() {
   if (!tsOK) return;
-  await Promise.allSettled([fetchNetNode('a',`${C.ASUS}:19999`), fetchNetNode('h',`${C.HP}:19999`)]);
+  await Promise.allSettled([
+    fetchNetNode('a', `${C.ASUS}:19999`),
+    fetchNetNode('h', `${C.HP}:19999`),
+  ]);
 }
 async function fetchNetNode(k, base) {
-  let data=null;
-  for (const c of ['system.net','net.eth0','net.ens3','net.Ethernet','net.Wi-Fi']) {
-    data=await ndChart(base,c); if(data) break;
+  let data = null;
+  for (const chart of ['system.net', 'net.eth0', 'net.ens3', 'net.Ethernet', 'net.Wi-Fi']) {
+    data = await ndChart(base, chart); if (data) break;
   }
   if (!data) return;
-  const row=data.data[0], dl=Math.abs(row[1]??0)/1000, ul=Math.abs(row[2]??0)/1000;
-  nMx.d=Math.max(nMx.d,dl||1); nMx.u=Math.max(nMx.u,ul||1);
-  setNBar(k,'d',dl/nMx.d,fmb(dl));
-  setNBar(k,'u',ul/nMx.u,fmb(ul)+'↑');
+  const row = data.data[0];
+  const dl = Math.abs(row[1] ?? 0) / 1000;  /* kbps → Mbps */
+  const ul = Math.abs(row[2] ?? 0) / 1000;
+  nMx.d = Math.max(nMx.d, dl || 1); nMx.u = Math.max(nMx.u, ul || 1);
+  sNBar(k, 'd', dl / nMx.d, fmb(dl));
+  sNBar(k, 'u', ul / nMx.u, fmb(ul) + '↑');
 }
-function setNBar(k,dir,ratio,label) {
-  const b=$(`nb-${k}${dir}`),v=$(`nv-${k}${dir}`);
-  if(b) b.style.transform=`scaleX(${Math.min(1,Math.max(.02,ratio))})`;
-  if(v) v.textContent=label;
+function sNBar(k, dir, ratio, label) {
+  const b = $(`nb-${k}${dir}`), v = $(`nv-${k}${dir}`);
+  if (b) b.style.transform = `scaleX(${Math.min(1, Math.max(0.02, ratio))})`;
+  if (v) v.textContent = label;
 }
 
-/* =============================================================
-   CONNECTED DEVICES GRID
-   Shows all devices from C.DEVICES with live latency & status.
-   ============================================================= */
+/* ═══════════════════════════════════════════════════════════════
+   DEVICE GRID — probes all devices from C.DEVICES in parallel
+═══════════════════════════════════════════════════════════════ */
 function buildDevGrid() {
   const g = $('dev-grid'); if (!g) return;
   g.innerHTML = C.DEVICES.map(d => `
-    <div class="dev pinging" id="dev-${d.ip.replace(/\./g,'-')}">
+    <div class="dev wait" id="dev-${d.ip.replace(/\./g, '-')}">
       <div class="dev-name">${d.name}</div>
       <div class="dev-ip">${d.ip}</div>
-      <div class="dev-st">
+      <div class="dev-row">
         <div class="dev-dot"></div>
         <span class="dev-ms">…</span>
       </div>
@@ -887,292 +1087,339 @@ function buildDevGrid() {
 }
 
 function loopDevices() { probeDevices(); setInterval(probeDevices, C.T.DEV); }
-
 async function probeDevices() {
-  // Probe all devices in parallel for speed
   await Promise.allSettled(C.DEVICES.map(probeDevice));
 }
-
 async function probeDevice(dev) {
-  const eid = dev.ip.replace(/\./g,'-');
+  const eid = dev.ip.replace(/\./g, '-');
   const card = $(`dev-${eid}`); if (!card) return;
-
   const t0 = performance.now();
   try {
     await fetch(`http://${dev.ip}:${dev.port}${dev.path}`,
-      { signal: ab(3000), mode: 'cors' });
+      { signal: ab(3200), mode: 'cors' });
     const ms = Math.round(performance.now() - t0);
     card.className = 'dev on';
     card.querySelector('.dev-ms').textContent = `${ms}ms`;
-  } catch(_) {
+  } catch (_) {
     card.className = 'dev off';
     card.querySelector('.dev-ms').textContent = 'offline';
   }
 }
 
-/* =============================================================
-   RAM/SWAP ORBS
-   ============================================================= */
+/* ═══════════════════════════════════════════════════════════════
+   RAM / SWAP PRESSURE ORBS
+   Visual encoding: scale × color × glow all encode the same value
+   (memory pressure %) — triple redundancy for peripheral awareness.
+═══════════════════════════════════════════════════════════════ */
 function buildOrbs() {
-  const c=$('oc'); if(!c) return;
-  c.innerHTML=[mkOrb('ao','RAM','ASUS'),mkOrb('as','SWP','ASUS'),mkOrb('ho','RAM','HP'),mkOrb('hs','SWP','HP')].join('');
+  const c = $('oc'); if (!c) return;
+  c.innerHTML = [
+    mkOrb('ao', 'RAM', 'ASUS'), mkOrb('as', 'SWP', 'ASUS'),
+    mkOrb('ho', 'RAM', 'HP'),   mkOrb('hs', 'SWP', 'HP'),
+  ].join('');
 }
-function mkOrb(oid,lbl,node) {
-  return `<div class="ow"><div class="orb" id="orb-${oid}"></div><div class="ov" id="ov-${oid}">—%</div><div class="ol">${lbl}·${node}</div></div>`;
+function mkOrb(oid, lbl, node) {
+  return `<div class="ow"><div class="orb" id="orb-${oid}"></div>
+  <div class="ov" id="ov-${oid}">—%</div>
+  <div class="ol">${lbl}·${node}</div></div>`;
 }
 function loopOrbs() { fetchOrbs(); setInterval(fetchOrbs, C.T.ORB); }
 async function fetchOrbs() {
-  if(!tsOK) return;
-  await Promise.allSettled([fetchOrbNode('ao','as',`${C.ASUS}:61208`),fetchOrbNode('ho','hs',`${C.HP}:61208`)]);
+  if (!tsOK) return;
+  await Promise.allSettled([
+    fetchOrbN('ao', 'as', `${C.ASUS}:61208`),
+    fetchOrbN('ho', 'hs', `${C.HP}:61208`),
+  ]);
 }
-async function fetchOrbNode(rId,sId,base) {
-  const r=await sf(`${base}/api/3/mem`,4000); if(!r) return;
-  try { const d=await r.json(); setOrb(rId,d.percent??0); setOrb(sId,d.swap_percent??d.swap?.percent??0); } catch(_) {}
+async function fetchOrbN(rId, sId, base) {
+  const r = await sf(`${base}/api/3/mem`, 4000); if (!r) return;
+  try {
+    const d = await r.json();
+    setOrb(rId, d.percent ?? 0);
+    setOrb(sId, d.swap_percent ?? d.swap?.percent ?? 0);
+  } catch (_) {}
 }
-function setOrb(oid,pct) {
-  const o=$(`orb-${oid}`),v=$(`ov-${oid}`); if(!o||!v) return;
-  const s=0.38+(pct/100)*1.35;
-  let bg,sh;
-  if(pct<50){bg=`rgba(0,255,200,${.14+pct/100*.24})`;sh=`0 0 ${9+pct/3}px rgba(0,255,200,${.22+pct/100*.38})`;}
-  else if(pct<80){const t=(pct-50)/30;bg=`rgba(255,170,0,${.18+t*.2})`;sh=`0 0 ${17+t*9}px rgba(255,170,0,${.38+t*.28})`;}
-  else{const t=(pct-80)/20;bg=`rgba(255,0,60,${.22+t*.24})`;sh=`0 0 ${22+t*11}px rgba(255,0,60,${.48+t*.38})`;}
-  o.style.transform=`scale(${s})`; o.style.background=bg; o.style.boxShadow=sh;
-  v.textContent=`${Math.round(pct)}%`;
+function setOrb(oid, pct) {
+  const o = $(`orb-${oid}`), v = $(`ov-${oid}`); if (!o || !v) return;
+  /* Scale from 0.38 (nearly nothing) to 1.75 (full, dramatic) */
+  const s = 0.38 + (pct / 100) * 1.37;
+  let bg, sh;
+  if (pct < 50) {
+    bg = `rgba(0,255,200,${0.14 + pct/100*0.22})`; sh = `0 0 ${8+pct/3}px rgba(0,255,200,${0.2+pct/100*0.36})`;
+  } else if (pct < 80) {
+    const t = (pct-50)/30;
+    bg = `rgba(255,170,0,${0.16+t*0.2})`; sh = `0 0 ${16+t*9}px rgba(255,170,0,${0.36+t*0.28})`;
+  } else {
+    const t = (pct-80)/20;
+    bg = `rgba(255,34,68,${0.2+t*0.24})`; sh = `0 0 ${20+t*11}px rgba(255,34,68,${0.46+t*0.36})`;
+  }
+  o.style.transform = `scale(${s})`;
+  o.style.background = bg; o.style.boxShadow = sh;
+  v.textContent = `${Math.round(pct)}%`;
 }
 
-/* =============================================================
+/* ═══════════════════════════════════════════════════════════════
    DISK I/O
-   ============================================================= */
+═══════════════════════════════════════════════════════════════ */
 function loopDisk() { fetchDisk(); setInterval(fetchDisk, C.T.DISK); }
 async function fetchDisk() {
-  if(!tsOK) return;
-  await Promise.allSettled([fetchDiskNode('a',`${C.ASUS}:61208`),fetchDiskNode('h',`${C.HP}:61208`)]);
+  if (!tsOK) return;
+  await Promise.allSettled([
+    fetchDiskN('a', `${C.ASUS}:61208`),
+    fetchDiskN('h', `${C.HP}:61208`),
+  ]);
 }
-async function fetchDiskNode(k,base) {
-  const r=await sf(`${base}/api/3/diskio`,4000); if(!r) return;
+async function fetchDiskN(k, base) {
+  const r = await sf(`${base}/api/3/diskio`, 4000); if (!r) return;
   try {
-    const ds=await r.json(); let rb=0,wb=0;
-    ds.forEach(d=>{if(!d.disk_name||d.disk_name.startsWith('loop'))return;rb+=d.read_bytes??0;wb+=d.write_bytes??0;});
-    const rM=rb/1048576,wM=wb/1048576;
-    dMx.r=Math.max(dMx.r,rM||1); dMx.w=Math.max(dMx.w,wM||1);
-    setDr(`dr-${k==='a'?'ar':'hr'}`,rM/dMx.r,fbytes(rM));
-    setDr(`dr-${k==='a'?'aw':'hw'}`,wM/dMx.w,fbytes(wM));
-  } catch(_) {}
+    const ds = await r.json(); let rb = 0, wb = 0;
+    ds.forEach(d => {
+      if (!d.disk_name || d.disk_name.startsWith('loop')) return;
+      rb += d.read_bytes ?? 0; wb += d.write_bytes ?? 0;
+    });
+    const rM = rb / 1048576, wM = wb / 1048576;
+    dMx.r = Math.max(dMx.r, rM || 1); dMx.w = Math.max(dMx.w, wM || 1);
+    sDr(`dr-${k==='a'?'ar':'hr'}`, rM / dMx.r, fbytes(rM));
+    sDr(`dr-${k==='a'?'aw':'hw'}`, wM / dMx.w, fbytes(wM));
+  } catch (_) {}
 }
-function setDr(rowId,ratio,label) {
-  const row=$(rowId); if(!row) return;
-  const f=row.querySelector('.df'),v=row.querySelector('.dv');
-  if(f) f.style.transform=`scaleX(${Math.min(1,Math.max(.01,ratio))})`;
-  if(v) v.textContent=label;
+function sDr(rowId, ratio, label) {
+  const row = $(rowId); if (!row) return;
+  const f = row.querySelector('.df'), v = row.querySelector('.dv');
+  if (f) f.style.transform = `scaleX(${Math.min(1, Math.max(0.01, ratio))})`;
+  if (v) v.textContent = label;
 }
 
-/* =============================================================
-   NETWORK SPEED GAUGES
-   ============================================================= */
+/* ═══════════════════════════════════════════════════════════════
+   NETWORK SPEED GAUGES (SVG arc speedometers)
+═══════════════════════════════════════════════════════════════ */
 function buildGauges() {
-  const c=$('gc'); if(!c) return;
-  c.innerHTML=[mkG('ad','DL','ASUS','dl'),mkG('au','UL','ASUS','ul'),mkG('hd','DL','HP','dl'),mkG('hu','UL','HP','ul')].join('');
+  const c = $('gc'); if (!c) return;
+  c.innerHTML = [
+    mkG('ad','DL','ASUS','dl'), mkG('au','UL','ASUS','ul'),
+    mkG('hd','DL','HP','dl'),   mkG('hu','UL','HP','ul'),
+  ].join('');
 }
-function mkG(gid,dir,node,cls) {
-  const R=42,CX=55,CY=55,A0=215,SW=110;
-  const xy=a=>({x:CX+R*Math.cos((a-90)*Math.PI/180),y:CY+R*Math.sin((a-90)*Math.PI/180)});
-  const s=xy(A0),e=xy(A0+SW),al=(SW/360)*2*Math.PI*R;
-  return `<div class="gw"><div style="width:96px;height:62px;"><svg viewBox="0 0 110 70" overflow="visible" width="96" height="62"><path d="M${s.x} ${s.y} A${R} ${R} 0 0 1 ${e.x} ${e.y}" stroke="rgba(255,255,255,.05)" stroke-width="9" fill="none" stroke-linecap="round"/><path class="gf ${cls}" id="g-${gid}" d="M${s.x} ${s.y} A${R} ${R} 0 0 1 ${e.x} ${e.y}" stroke-dasharray="${al}" stroke-dashoffset="${al}" stroke-width="9" fill="none" stroke-linecap="round" data-al="${al}"/><text x="55" y="44" text-anchor="middle" font-family="Rajdhani,sans-serif" font-weight="700" font-size="13" fill="#e8f4f0" id="gs-${gid}">0</text><text x="55" y="55" text-anchor="middle" font-family="Share Tech Mono,monospace" font-size="5.5" fill="rgba(200,240,230,.34)">Mbps</text></svg></div><div class="gl">${dir}·${node}</div></div>`;
+function mkG(gid, dir, node, cls) {
+  const R=42, CX=55, CY=55, A0=215, SW=110;
+  const xy = a => ({ x: CX+R*Math.cos((a-90)*Math.PI/180), y: CY+R*Math.sin((a-90)*Math.PI/180) });
+  const s=xy(A0), e=xy(A0+SW), al=(SW/360)*2*Math.PI*R;
+  return `<div class="gw"><div style="width:94px;height:60px;"><svg viewBox="0 0 110 70" overflow="visible" width="94" height="60">
+    <path d="M${s.x} ${s.y} A${R} ${R} 0 0 1 ${e.x} ${e.y}" stroke="rgba(255,255,255,.04)" stroke-width="9" fill="none" stroke-linecap="round"/>
+    <path class="gf ${cls}" id="g-${gid}" d="M${s.x} ${s.y} A${R} ${R} 0 0 1 ${e.x} ${e.y}" stroke-dasharray="${al}" stroke-dashoffset="${al}" stroke-width="9" fill="none" stroke-linecap="round" data-al="${al}"/>
+    <text x="55" y="44" text-anchor="middle" font-family="Rajdhani,sans-serif" font-weight="700" font-size="13" fill="#e2f0ec" id="gs-${gid}">0</text>
+    <text x="55" y="55" text-anchor="middle" font-family="Share Tech Mono,monospace" font-size="5.5" fill="rgba(200,240,230,.32)">Mbps</text>
+  </svg></div><div class="gl">${dir}·${node}</div></div>`;
 }
 function loopGauges() { fetchGauges(); setInterval(fetchGauges, C.T.GAUGE); }
 async function fetchGauges() {
-  if(!tsOK) return;
-  await Promise.allSettled([fetchGaugeNode('a',`${C.ASUS}:19999`),fetchGaugeNode('h',`${C.HP}:19999`)]);
+  if (!tsOK) return;
+  await Promise.allSettled([
+    fetchGaugeN('a', `${C.ASUS}:19999`),
+    fetchGaugeN('h', `${C.HP}:19999`),
+  ]);
 }
-async function fetchGaugeNode(k,base) {
-  let data=null;
-  for(const c of ['system.net','net.eth0','net.ens3','net.Ethernet']){data=await ndChart(base,c);if(data)break;}
-  if(!data) return;
-  const row=data.data[0];
-  setG(`${k}d`,Math.abs(row[1]??0)/1000);
-  setG(`${k}u`,Math.abs(row[2]??0)/1000);
+async function fetchGaugeN(k, base) {
+  let data = null;
+  for (const chart of ['system.net','net.eth0','net.ens3','net.Ethernet']) {
+    data = await ndChart(base, chart); if (data) break;
+  }
+  if (!data) return;
+  const row = data.data[0];
+  sGauge(`${k}d`, Math.abs(row[1]??0)/1000);
+  sGauge(`${k}u`, Math.abs(row[2]??0)/1000);
 }
-function setG(gid,mbps) {
-  const arc=$(`g-${gid}`),spd=$(`gs-${gid}`); if(!arc||!spd) return;
-  const al=parseFloat(arc.getAttribute('data-al')||'0'); if(!al) return;
-  const r=Math.min(mbps/C.MBW,1);
-  arc.style.strokeDashoffset=al-r*al;
-  arc.style.stroke=r<.5?'var(--c)':r<.8?'var(--a)':'var(--r)';
-  spd.textContent=mbps<10?mbps.toFixed(1):Math.round(mbps).toString();
+function sGauge(gid, mbps) {
+  const arc = $(`g-${gid}`), spd = $(`gs-${gid}`); if (!arc||!spd) return;
+  const al = parseFloat(arc.getAttribute('data-al')||'0'); if (!al) return;
+  const r = Math.min(mbps / C.MBW, 1);
+  arc.style.strokeDashoffset = al - r*al;
+  arc.style.stroke = r < 0.5 ? 'var(--c)' : r < 0.8 ? 'var(--a)' : 'var(--r)';
+  spd.textContent = mbps < 10 ? mbps.toFixed(1) : Math.round(mbps).toString();
 }
 
-/* =============================================================
+/* ═══════════════════════════════════════════════════════════════
    PROCESS SPOTLIGHT
-   ============================================================= */
+═══════════════════════════════════════════════════════════════ */
 function loopProc() { fetchProc(); setInterval(fetchProc, C.T.PROC); }
 async function fetchProc() {
-  if(!tsOK) return;
-  await Promise.allSettled([fetchProcNode('a',`${C.ASUS}:61208`),fetchProcNode('h',`${C.HP}:61208`)]);
+  if (!tsOK) return;
+  await Promise.allSettled([fetchProcN('a',`${C.ASUS}:61208`), fetchProcN('h',`${C.HP}:61208`)]);
 }
-async function fetchProcNode(k,base) {
-  const r=await sf(`${base}/api/3/processlist`,5000); if(!r) return;
+async function fetchProcN(k, base) {
+  const r = await sf(`${base}/api/3/processlist`, 5000); if (!r) return;
   try {
-    const ps=await r.json(); if(!Array.isArray(ps)||!ps.length) return;
-    const top=ps.filter(p=>(p.cpu_percent??0)>0).sort((a,b)=>b.cpu_percent-a.cpu_percent)[0]; if(!top) return;
-    const card=$(`prc-${k}`); if(!card) return;
-    card.querySelector('.pnm').textContent=String(top.name??'unknown').substring(0,20);
-    card.querySelector('.pp').textContent=`${(top.cpu_percent??0).toFixed(1)}%`;
-    card.querySelector('.pm').textContent=`PID ${top.pid??'?'} · ${fbytes((top.memory_info?.rss??0)/1048576)} RSS`;
-  } catch(_) {}
+    const ps = await r.json(); if (!Array.isArray(ps)||!ps.length) return;
+    const top = ps.filter(p=>(p.cpu_percent??0)>0).sort((a,b)=>b.cpu_percent-a.cpu_percent)[0]; if (!top) return;
+    const card = $(`prc-${k}`); if (!card) return;
+    card.querySelector('.pnm').textContent = String(top.name??'unknown').substring(0,20);
+    card.querySelector('.pp').textContent  = `${(top.cpu_percent??0).toFixed(1)}%`;
+    card.querySelector('.pm').textContent  = `PID ${top.pid??'?'} · ${fbytes((top.memory_info?.rss??0)/1048576)} RSS`;
+  } catch (_) {}
 }
 
-/* =============================================================
+/* ═══════════════════════════════════════════════════════════════
    PING SPARKLINES
-   ============================================================= */
+   We use fetch() timing as a proxy for ping latency.
+   For WAN: fetch https://1.1.1.1 with no-cors (always succeeds)
+   For TS:  fetch the ASUS Glances endpoint directly
+═══════════════════════════════════════════════════════════════ */
 function loopPing() { fetchPing(); setInterval(fetchPing, C.T.PING); }
 async function fetchPing() {
-  const [wms,tms]=await Promise.all([
-    rtt('https://1.1.1.1',3500),
-    tsOK?rtt(`${C.ASUS}:61208/api/3/cpu`,3500):Promise.resolve(null),
+  const [wms, tms] = await Promise.all([
+    rtt('https://1.1.1.1', 3500),
+    tsOK ? rtt(`${C.ASUS}:61208/api/3/cpu`, 3500) : Promise.resolve(null),
   ]);
-  pH.w.push(wms); if(pH.w.length>C.PL) pH.w.shift();
-  pH.t.push(tms); if(pH.t.length>C.PL) pH.t.shift();
-  drawSpark('w',pH.w); drawSpark('t',pH.t);
-  setPV('pgv-w',wms); setPV('pgv-t',tms);
+  pH.w.push(wms); if (pH.w.length > C.PL) pH.w.shift();
+  pH.t.push(tms); if (pH.t.length > C.PL) pH.t.shift();
+  drawSpark('w', pH.w); drawSpark('t', pH.t);
+  setPV('pgv-w', wms); setPV('pgv-t', tms);
 }
-async function rtt(url,ms) {
-  const t0=performance.now();
-  try{await fetch(url,{mode:'no-cors',cache:'no-store',signal:ab(ms)});return Math.round(performance.now()-t0);}
-  catch(_){return null;}
+async function rtt(url, ms) {
+  const t0 = performance.now();
+  try { await fetch(url, {mode:'no-cors',cache:'no-store',signal:ab(ms)}); return Math.round(performance.now()-t0); }
+  catch (_) { return null; }
 }
-function drawSpark(k,hist) {
-  const W=200,H=22,valid=hist.filter(v=>v!==null); if(valid.length<2) return;
-  const mx=Math.max(...valid,200);
-  const pts=hist.map((v,i)=>({x:(i/(C.PL-1))*W,y:v===null?H/2:H-((v/mx)*(H-4))-2}));
-  const line=pts.map((p,i)=>`${i===0?'M':'L'} ${p.x} ${p.y}`).join(' ');
-  const area=`M ${pts[0].x} ${H} `+pts.map(p=>`L ${p.x} ${p.y}`).join(' ')+` L ${pts[pts.length-1].x} ${H} Z`;
-  setA(`spl-${k}`,'d',line); setA(`spa-${k}`,'d',area);
-  setA(`spd-${k}`,'cx',pts[pts.length-1].x); setA(`spd-${k}`,'cy',pts[pts.length-1].y);
+function drawSpark(k, hist) {
+  const W=200, H=22, valid=hist.filter(v=>v!==null); if (valid.length < 2) return;
+  const mx = Math.max(...valid, 200);
+  const pts = hist.map((v,i) => ({ x:(i/(C.PL-1))*W, y:v===null?H/2:H-((v/mx)*(H-4))-2 }));
+  const line = pts.map((p,i) => `${i===0?'M':'L'} ${p.x} ${p.y}`).join(' ');
+  const area = `M ${pts[0].x} ${H} ` + pts.map(p=>`L ${p.x} ${p.y}`).join(' ') + ` L ${pts[pts.length-1].x} ${H} Z`;
+  sA(`spl-${k}`,'d',line); sA(`spa-${k}`,'d',area);
+  sA(`spd-${k}`,'cx',pts[pts.length-1].x); sA(`spd-${k}`,'cy',pts[pts.length-1].y);
 }
-function setPV(eid,ms) {
-  const e=$(eid); if(!e) return;
-  if(ms===null){e.textContent='TO';e.className='pgv b';return;}
+function setPV(eid, ms) {
+  const e = $(eid); if (!e) return;
+  if (ms===null) { e.textContent='TO'; e.className='pgv b'; return; }
   e.textContent=`${ms}ms`; e.className=`pgv ${ms<50?'g':ms<150?'o':'b'}`;
 }
 
-/* =============================================================
+/* ═══════════════════════════════════════════════════════════════
    ADGUARD DNS TICKER
-   ============================================================= */
+═══════════════════════════════════════════════════════════════ */
 function loopAG() { fetchAG(); setInterval(fetchAG, C.T.AG); }
 async function fetchAG() {
-  const r=await sf(`${C.HP}:${C.AG_PORT}/control/querylog?limit=40`,5000,{'Authorization':C.AG_AUTH});
-  if(!r||!r.ok){setTick(`AdGuard ${r?r.status:'offline'} port ${C.AG_PORT}`);return;}
+  const r = await sf(`${C.HP}:${C.AG_PORT}/control/querylog?limit=40`, 5000, {'Authorization': C.AG_AUTH});
+  if (!r||!r.ok) { sTick(`AdGuard ${r?r.status:'offline'}`); return; }
   try {
-    const d=await r.json(); if(!d.data?.length){setTick('No queries yet');return;}
-    const items=d.data.map(q=>({domain:(q.question?.name??'?').replace(/\.$/,''),blocked:q.reason&&q.reason!=='NotFilteredNotFound'}));
-    const t=$('tt'); if(!t) return;
-    t.innerHTML=[...items,...items].map(it=>`<span class="ti"><span class="tsep">◆</span><span class="${it.blocked?'tblk':'talw'}">${it.blocked?'✕':'·'} ${esc(it.domain)}</span></span>`).join('');
-    t.style.animation='none'; void t.offsetWidth; t.style.animation='';
-  } catch(_){setTick('Parse error');}
+    const d = await r.json(); if (!d.data?.length) { sTick('No DNS queries yet'); return; }
+    const items = d.data.map(q => ({
+      domain: (q.question?.name ?? '?').replace(/\.$/, ''),
+      blocked: q.reason && q.reason !== 'NotFilteredNotFound',
+    }));
+    const t = $('tt'); if (!t) return;
+    t.innerHTML = [...items, ...items].map(it =>
+      `<span class="ti"><span class="tsep">◆</span><span class="${it.blocked?'tblk':'talw'}">${it.blocked?'✕':'·'} ${esc(it.domain)}</span></span>`
+    ).join('');
+    t.style.animation = 'none'; void t.offsetWidth; t.style.animation = '';
+  } catch (_) { sTick('Parse error'); }
 }
-function setTick(msg){const t=$('tt');if(t)t.innerHTML=`<span class="ti"><span class="talw">${msg}</span></span>`;}
+function sTick(msg) { const t=$('tt'); if(t) t.innerHTML=`<span class="ti"><span class="talw">${msg}</span></span>`; }
 
-/* =============================================================
+/* ═══════════════════════════════════════════════════════════════
    TAILSCALE PEERS
-   ============================================================= */
-const PEERS=[
-  {name:'ASUS TUF', ip:'100.103.55.109',port:61208},
-  {name:'HP SERVER',ip:'100.117.103.99', port:61208},
+═══════════════════════════════════════════════════════════════ */
+const PEERS = [
+  { name:'ASUS TUF', ip:'100.103.55.109', port:61208 },
+  { name:'HP SERVER',ip:'100.117.103.99',  port:61208 },
 ];
 function loopPeers() { fetchPeers(); setInterval(fetchPeers, C.T.TS); }
 async function fetchPeers() {
-  const results=await Promise.all(PEERS.map(async peer=>{
-    const t0=performance.now();
-    try{const r=await fetch(`http://${peer.ip}:${peer.port}/api/3/cpu`,{signal:ab(3000)});return{peer,on:r.ok,ms:Math.round(performance.now()-t0)};}
-    catch(_){return{peer,on:false,ms:null};}
+  const results = await Promise.all(PEERS.map(async peer => {
+    const t0 = performance.now();
+    try {
+      const r = await fetch(`http://${peer.ip}:${peer.port}/api/3/cpu`, {signal:ab(3000)});
+      return { peer, on: r.ok, ms: Math.round(performance.now()-t0) };
+    } catch (_) { return { peer, on: false, ms: null }; }
   }));
-  const g=$('pg2'); if(!g) return;
-  g.innerHTML=results.map(({peer,on,ms})=>`<div class="peer ${on?'on':'off'}"><div class="pnm2">${peer.name}</div><div class="pip">${peer.ip}</div><div class="pst"><div class="phb"></div><span>${on?(ms?`${ms}ms`:'ALIVE'):'OFFLINE'}</span></div></div>`).join('');
-  // Dynamically update tsOK so data starts if nodes come online
-  const anyOn=results.some(r=>r.on);
-  if(anyOn&&!tsOK){tsOK=true;startAll();}
-  else if(!anyOn){tsOK=false;}
+  const g = $('pg2'); if (!g) return;
+  g.innerHTML = results.map(({peer,on,ms}) =>
+    `<div class="peer ${on?'on':'off'}"><div class="pnm2">${peer.name}</div><div class="pip">${peer.ip}</div><div class="pst"><div class="phb"></div><span>${on?(ms?`${ms}ms`:'ALIVE'):'OFFLINE'}</span></div></div>`
+  ).join('');
+  /* Adaptive: update tsOK so data flows when connectivity changes */
+  const anyOn = results.some(r => r.on);
+  if (anyOn && !tsOK) { tsOK = true; if (loopsStarted) startAll(); }
+  else if (!anyOn) tsOK = false;
 }
 
-/* =============================================================
-   UPTIME BADGES
-   ============================================================= */
+/* ═══════════════════════════════════════════════════════════════
+   UPTIME ACHIEVEMENT BADGES
+═══════════════════════════════════════════════════════════════ */
 function loopBadges() { fetchBadges(); setInterval(fetchBadges, C.T.BDG); }
 async function fetchBadges() {
-  const [au,hu]=await Promise.all([fetchUpt(`${C.ASUS}:61208`),fetchUpt(`${C.HP}:61208`)]);
-  const c=$('bc'); if(!c) return;
-  c.innerHTML=[mkBdg('ASUS TUF',au),mkBdg('HP SERVER',hu)].join('');
+  const [au, hu] = await Promise.all([
+    fetchUpt(`${C.ASUS}:61208`),
+    fetchUpt(`${C.HP}:61208`),
+  ]);
+  const c = $('bc'); if (!c) return;
+  c.innerHTML = [mkBdg('ASUS TUF', au), mkBdg('HP SERVER', hu)].join('');
 }
 async function fetchUpt(base) {
-  const r=await sf(`${base}/api/3/uptime`,4000); if(!r) return null;
-  try{const d=await r.json();if(typeof d==='number')return d;if(typeof d==='string'){let s=0;const dm=d.match(/(\d+)\s*day/);if(dm)s+=parseInt(dm[1])*86400;const tm=d.match(/(\d+):(\d+):(\d+)/);if(tm)s+=parseInt(tm[1])*3600+parseInt(tm[2])*60+parseInt(tm[3]);return s||null;}}catch(_){}return null;
+  const r = await sf(`${base}/api/3/uptime`, 4000); if (!r) return null;
+  try {
+    const d = await r.json();
+    if (typeof d === 'number') return d;
+    if (typeof d === 'string') {
+      let s = 0;
+      const dm = d.match(/(\d+)\s*day/); if (dm) s += parseInt(dm[1]) * 86400;
+      const tm = d.match(/(\d+):(\d+):(\d+)/); if (tm) s += parseInt(tm[1])*3600+parseInt(tm[2])*60+parseInt(tm[3]);
+      return s || null;
+    }
+  } catch (_) {}
+  return null;
 }
-function mkBdg(name,sec) {
-  if(sec===null)return`<div class="bdg ir"><div class="bd"></div>○ ${name} · OFFLINE</div>`;
-  const h=sec/3600,d=h/24;
-  const[cls,ic,lbl]=d>=30?['dm','◈',`${~~d}D DIAMOND`]:d>=7?['gd','★',`${~~d}D GOLD`]:d>=3?['sv','◆',`${~~d}D SILVER`]:h>=24?['br','●',`${~~h}H BRONZE`]:['ir','○',`${~~h}H IRON`];
-  return`<div class="bdg ${cls}"><div class="bd"></div>${ic} ${name} · ${lbl}</div>`;
+function mkBdg(name, sec) {
+  if (sec===null) return `<div class="bdg ir"><div class="bd"></div>○ ${name} · OFFLINE</div>`;
+  const h=sec/3600, d=h/24;
+  const [cls,ic,lbl] = d>=30?['dm','◈',`${~~d}D DIAMOND`]:d>=7?['gd','★',`${~~d}D GOLD`]:d>=3?['sv','◆',`${~~d}D SILVER`]:h>=24?['br','●',`${~~h}H BRONZE`]:['ir','○',`${~~h}H IRON`];
+  return `<div class="bdg ${cls}"><div class="bd"></div>${ic} ${name} · ${lbl}</div>`;
 }
 
-/* =============================================================
+/* ═══════════════════════════════════════════════════════════════
    UTILITIES
-   ============================================================= */
+═══════════════════════════════════════════════════════════════ */
 
-// safeFetch: never throws, returns null on any failure
-async function sf(url,ms,headers={}) {
-  try{return await fetch(url,{signal:ab(ms),headers});}catch(_){return null;}
+/* Safe fetch — never throws, returns null on failure */
+async function sf(url, ms, headers = {}) {
+  try { return await fetch(url, { signal: ab(ms), headers }); }
+  catch (_) { return null; }
 }
 
-// Fetch one Netdata chart, returns parsed data or null
-async function ndChart(base,chart) {
-  const r=await sf(`${base}/api/v1/data?chart=${chart}&points=1&format=json&after=-2`,3200);
-  if(!r||!r.ok) return null;
-  try{const d=await r.json();return(d.data?.[0]&&d.data[0].length>=3)?d:null;}catch(_){return null;}
+/* Fetch one specific Netdata chart */
+async function ndChart(base, chart) {
+  const r = await sf(`${base}/api/v1/data?chart=${chart}&points=1&format=json&after=-2`, 3000);
+  if (!r || !r.ok) return null;
+  try {
+    const d = await r.json();
+    return (d.data?.[0] && d.data[0].length >= 3) ? d : null;
+  } catch (_) { return null; }
 }
 
-// Cross-browser AbortSignal with timeout
+/* Cross-browser AbortSignal with timeout */
 function ab(ms) {
-  if(typeof AbortSignal?.timeout==='function')return AbortSignal.timeout(ms);
-  const c=new AbortController(); setTimeout(()=>c.abort(),ms); return c.signal;
+  if (typeof AbortSignal?.timeout === 'function') return AbortSignal.timeout(ms);
+  const c = new AbortController(); setTimeout(() => c.abort(), ms); return c.signal;
 }
 
-function fmb(mbps){if(mbps>=100)return`${Math.round(mbps)}Mb`;if(mbps>=1)return`${mbps.toFixed(1)}Mb`;return`${(mbps*1000).toFixed(0)}Kb`;}
-function fbytes(mb){if(mb>=1000)return`${(mb/1000).toFixed(1)}GB/s`;if(mb<.1)return`${(mb*1024).toFixed(0)}KB/s`;return`${mb.toFixed(1)}MB/s`;}
-function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function fmb(mbps) {
+  if (mbps >= 100) return `${Math.round(mbps)}Mb`;
+  if (mbps >= 1)   return `${mbps.toFixed(1)}Mb`;
+  return `${(mbps * 1000).toFixed(0)}Kb`;
+}
+function fbytes(mb) {
+  if (mb >= 1000) return `${(mb/1000).toFixed(1)}GB/s`;
+  if (mb < 0.1)   return `${(mb*1024).toFixed(0)}KB/s`;
+  return `${mb.toFixed(1)}MB/s`;
+}
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
 
-const $    = i => document.getElementById(i);
-const txt  = (i,v) => { const e=$(i); if(e) e.textContent=v; };
-const setA = (i,a,v) => { const e=$(i); if(e) e.setAttribute(a,v); };
+const $   = i => document.getElementById(i);
+const txt = (i, v) => { const e=$(i); if(e) e.textContent=v; };
+const sA  = (i, a, v) => { const e=$(i); if(e) e.setAttribute(a,v); };
 </script>
-
-<!--
-=================================================================
-  NOTE ON MIXED CONTENT (IMPORTANT TO READ)
-  
-  This page is served from GitHub Pages over HTTPS.
-  Modern browsers block HTTP requests from HTTPS pages
-  ("mixed content"). The <meta> CSP tag above relaxes this
-  in Kiwi browser specifically.
-  
-  For the MOST reliable experience (especially Chrome on Android),
-  serve this page yourself from your ASUS TUF over HTTP:
-  
-  1. Copy this index.html to C:\Users\Adarsh\Desktop\homepage\
-     (or any folder on the ASUS)
-  
-  2. Run this one-liner in Command Prompt on the ASUS to serve it:
-     python -m http.server 8888 --directory "C:\Users\Adarsh\Desktop\homepage"
-  
-  3. Access it on your Vivo at: http://100.103.55.109:8888
-     (Add to Home Screen in Chrome for fullscreen PWA mode)
-  
-  This completely eliminates mixed-content issues because
-  both the page and the API calls are plain HTTP.
-  
-  Or for Kiwi browser: open the GitHub Pages URL, go to
-  Kiwi Settings → Site Settings → Allow mixed content.
-=================================================================
--->
 
 </body>
 </html>
